@@ -13,98 +13,214 @@
 </head>
 <body>
 
+<!-- pinned background: stays fixed while every section below scrolls over it -->
+<canvas id="hero-canvas" class="strip-canvas" aria-hidden="true"></canvas>
+
 <nav class="nav">
   <div class="nav__inner">
-    <a class="nav__brand" href="index.html">aayush<span>.</span>gupta</a>
+    <a class="nav__brand" href="#hero">aayush<span>.</span>gupta</a>
     <button class="nav__toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
     <ul class="nav__links">
-      <li><a href="about.html">About</a></li>
-      <li><a href="ventures.html">Ventures</a></li>
-      <li><a href="achievements.html">Achievements</a></li>
-      <li><a href="now.html">Now</a></li>
-      <li><a href="contact.html">Contact</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#ventures">Ventures</a></li>
+      <li><a href="#achievements">Achievements</a></li>
+      <li><a href="#now">Now</a></li>
+      <li><a href="#contact">Contact</a></li>
     </ul>
   </div>
 </nav>
 
-<header class="hero">
-  <canvas id="hero-canvas" aria-hidden="true"></canvas>
-  <div class="hero__content">
-    <p class="hero__eyebrow">Business &amp; Management Strategy</p>
-    <h1>Aayush<br />Gupta</h1>
-    <p class="hero__role">Commerce · Economics · Applied Mathematics — Co-founder, life2see</p>
-  </div>
-  <div class="hero__scroll">
-    <span>Scroll to explore</span>
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M2 5L8 11L14 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </div>
-</header>
-
 <main>
-  <section id="intro">
-    <div class="wrap">
-      <p class="eyebrow" data-reveal>About</p>
-      <p class="lede" data-reveal>
-        I'm an aspiring business and management strategist with a strong focus on commerce,
-        economics, and applied mathematics. As the co-founder of
-        <strong>life2see</strong>, a social initiative dedicated to driving community impact,
-        I combine an entrepreneurial mindset with leadership to create meaningful change.
+
+  <!-- HERO -->
+  <section id="hero" data-tint="hero" class="hero strip-section strip-section--hero">
+    <div class="hero__content">
+      <p class="hero__eyebrow">Business &amp; Management Strategy</p>
+      <h1>Aayush Gupta</h1>
+      <p class="hero__subtitle">Commerce · Economics · Applied Mathematics · Co-founder, life2see</p>
+      
+      <p class="hero__description">
+        Aspiring business and management strategist focused on using strategy and
+        entrepreneurship to drive real social impact. Co-founder of life2see, a social
+        initiative exploring how business models can solve real-world problems.
       </p>
-      <p style="margin-top:20px;" data-reveal><a href="about.html">More about me →</a></p>
+
+      <div class="hero__cards">
+        <a href="#about" class="hero-card">
+          <p class="hero-card__label">About</p>
+          <p class="hero-card__desc">who I am</p>
+        </a>
+        <a href="#ventures" class="hero-card">
+          <p class="hero-card__label">Ventures</p>
+          <p class="hero-card__desc">ideas worth building</p>
+        </a>
+        <a href="#achievements" class="hero-card">
+          <p class="hero-card__label">Achievements</p>
+          <p class="hero-card__desc">recognition along the way</p>
+        </a>
+        <a href="#now" class="hero-card">
+          <p class="hero-card__label">Now</p>
+          <p class="hero-card__desc">what I'm focused on</p>
+        </a>
+        <a href="#contact" class="hero-card">
+          <p class="hero-card__label">Contact</p>
+          <p class="hero-card__desc">get in touch</p>
+        </a>
+      </div>
+    </div>
+
+    <div class="hero__scroll">
+      <span>Scroll to explore</span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2 5L8 11L14 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     </div>
   </section>
 
-  <section id="ventures-teaser">
+  <!-- ABOUT -->
+  <section id="about" data-tint="about" class="strip-section">
+    <div class="wrap">
+      <div class="panel" data-reveal>
+        <p class="eyebrow">About</p>
+        <h2 class="section-title">The strategist's brief</h2>
+        <p class="lede">
+          I'm an aspiring business and management strategist with a strong focus on
+          commerce, economics, and applied mathematics.
+        </p>
+        <p style="margin-top:20px; color:var(--parchment-dim);">
+          As the co-founder of <a href="#ventures">life2see</a>, a social initiative
+          dedicated to driving community impact, I combine an entrepreneurial mindset with
+          leadership to create meaningful change. I'm passionate about exploring how
+          business models can solve real-world social problems, and I'm continuously
+          seeking opportunities to sharpen my analytical skills and expand my strategic
+          perspective.
+        </p>
+
+        <p class="eyebrow" style="margin-top:36px;">Off duty</p>
+        <div class="placeholder-card" style="margin-top:14px;">
+          Add a few personal details here — hobbies, sport, music, languages, books,
+          anything that rounds you out beyond the resume.
+        </div>
+
+        <div class="tags" style="margin-top:28px;">
+          <span class="tag">Commerce</span>
+          <span class="tag">Economics</span>
+          <span class="tag">Applied Mathematics</span>
+          <span class="tag">Social Enterprise</span>
+          <span class="tag">Strategy</span>
+          <span class="tag">Negotiation</span>
+        </div>
+
+        <a class="standalone-link" href="about.html">View as a standalone page →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- VENTURES -->
+  <section id="ventures" data-tint="ventures" class="strip-section">
     <div class="wrap">
       <p class="eyebrow" data-reveal>Ventures</p>
-      <div class="card" data-reveal>
-        <p class="card__meta">Co-founder · ongoing</p>
+      <h2 class="section-title" data-reveal>Ideas worth building</h2>
+
+      <div class="card panel" data-reveal>
+        <p class="card__meta">Co-founder · Ongoing</p>
         <h2>life2see</h2>
         <p>
-          A social initiative built to drive community impact — pairing an entrepreneurial,
-          business-first mindset with hands-on leadership to solve real-world social problems.
+          A social initiative dedicated to driving community impact. life2see pairs a
+          business-first, entrepreneurial mindset with hands-on leadership — the goal is
+          to explore how real business models and strategy can be pointed at real social
+          problems, not just run as a side project.
+        </p>
+        <p>
+          Follow the initiative's work on Instagram, or get in touch to hear more about
+          the mission and where it's headed next.
         </p>
         <div class="tags">
           <span class="tag">Social Enterprise</span>
           <span class="tag">Community Impact</span>
+          <span class="tag">Co-founder</span>
           <span class="tag">Leadership</span>
         </div>
       </div>
-      <p style="margin-top:24px;" data-reveal><a href="ventures.html">See all ventures →</a></p>
+
+      <div class="placeholder-card" style="margin-top:24px;" data-reveal>
+        More ventures &amp; projects are in progress — this section will grow.
+      </div>
+      <a class="standalone-link" href="ventures.html" data-reveal>View as a standalone page →</a>
     </div>
   </section>
 
-  <section id="achievements-teaser">
+  <!-- ACHIEVEMENTS -->
+  <section id="achievements" data-tint="achievements" class="strip-section">
     <div class="wrap">
       <p class="eyebrow" data-reveal>Achievements</p>
-      <div class="card" data-reveal>
-        <p class="card__meta">Oxford MUN · 2025</p>
+      <h2 class="section-title" data-reveal>Recognition along the way</h2>
+
+      <div class="card panel" data-reveal>
+        <p class="card__meta">Oxford Model United Nations · 2025</p>
         <h2>Promising Delegate <span class="badge">Winner</span></h2>
         <p>
-          Awarded Promising Delegate at Oxford Model United Nations 2025 — recognising
-          analytical clarity, negotiation, and persuasive argument under committee pressure.
+          Awarded Promising Delegate at Oxford MUN 2025 — recognition for research
+          depth, negotiation, and persuasive argument under committee pressure, competing
+          against delegates from across the world.
         </p>
+        <div class="tags">
+          <span class="tag">Diplomacy</span>
+          <span class="tag">Negotiation</span>
+          <span class="tag">Public Speaking</span>
+        </div>
       </div>
-      <p style="margin-top:24px;" data-reveal><a href="achievements.html">See all achievements →</a></p>
+
+      <div class="placeholder-card" style="margin-top:24px;" data-reveal>
+        More achievements and competition results are on the way.
+      </div>
+      <a class="standalone-link" href="achievements.html" data-reveal>View as a standalone page →</a>
     </div>
   </section>
 
-  <section id="contact-teaser">
-    <div class="wrap" style="text-align:center;">
-      <p class="eyebrow" data-reveal>Get in touch</p>
-      <h2 style="font-size:clamp(26px,4vw,38px); margin-top:14px;" data-reveal>
-        Let's talk strategy, ventures, or the road ahead.
-      </h2>
-      <p style="margin-top:26px;" data-reveal>
-        <a class="btn" href="contact.html">Contact me</a>
-      </p>
+  <!-- NOW -->
+  <section id="now" data-tint="now" class="strip-section">
+    <div class="wrap">
+      <div class="panel" data-reveal>
+        <p class="eyebrow">Now</p>
+        <h2 class="section-title">What I'm focused on</h2>
+        <ul class="now-list">
+          <li><strong>College applications.</strong> Putting together applications for business/management programmes — this site is part of that process.</li>
+          <li><strong>life2see.</strong> Continuing to build the initiative as co-founder, growing its community impact.</li>
+          <li><strong>Building this site.</strong> Learning by doing — plain HTML/CSS/JS, designed and written from scratch.</li>
+        </ul>
+        <p class="timestamp">last updated: August 2026</p>
+      </div>
     </div>
   </section>
+
+  <!-- CONTACT -->
+  <section id="contact" data-tint="contact" class="strip-section">
+    <div class="wrap">
+      <div class="panel" data-reveal>
+        <p class="eyebrow">Contact</p>
+        <h2 class="section-title">Get in touch</h2>
+        <p class="dim">
+          For anything — ventures, MUN, or opportunities to collaborate — email or phone
+          are the most reliable channels.
+        </p>
+        <div class="row-list" style="margin-top:24px;">
+          <div class="row">
+            <div class="row__label">Email</div>
+            <div class="row__value"><a href="mailto:aayushsgupta99@gmail.com">aayushsgupta99@gmail.com</a></div>
+          </div>
+          <div class="row">
+            <div class="row__label">Phone</div>
+            <div class="row__value"><a href="tel:+919925043649">+91 99250 43649</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
-<footer class="site-footer">
+<footer class="site-footer" style="position:relative; z-index:1;">
   <div class="wrap">
     <div class="site-footer__icons">
       <a href="mailto:aayushsgupta99@gmail.com" aria-label="Email" title="Email">
@@ -114,12 +230,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z"/></svg>
       </a>
     </div>
-    <p class="site-footer__meta">
-      © 2026 · Aayush Gupta
-      <a href="about.html">About</a>·
-      <a href="ventures.html">Ventures</a>·
-      <a href="contact.html">Contact</a>
-    </p>
+    <p class="site-footer__meta">© 2026 · Aayush Gupta</p>
   </div>
 </footer>
 
