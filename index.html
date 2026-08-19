@@ -34,10 +34,15 @@
 
   <!-- HERO -->
   <section id="hero" data-tint="hero" class="hero strip-section strip-section--hero">
+    <!-- 3D Canvas stays in background -->
+    <div class="hero__canvas-wrapper">
+      <canvas id="hero-canvas" class="strip-canvas" aria-hidden="true"></canvas>
+    </div>
+
+    <!-- Content layered on top -->
     <div class="hero__content">
       <h1 class="hero__name">AAYUSH GUPTA</h1>
       <p class="hero__tagline">Business &amp; Management Strategy</p>
-      <p class="hero__subtitle">Commerce · Economics · Applied Mathematics</p>
     </div>
 
     <div class="hero__scroll">
