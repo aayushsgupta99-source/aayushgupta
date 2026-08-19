@@ -1,7 +1,7 @@
 /* ============================================================
-   Toroidal Knot Animation (Kian Shah style)
-   Beautiful 3D twisted knot wireframe that shifts colors as
-   you scroll through sections. Cyan and orange aesthetic.
+   Kian Shah Style 3D Mesh Animation
+   Beautiful flowing 3D ribbon structure that morphs and changes
+   colors as you scroll. Text layered on top with z-index control.
    ============================================================ */
 
 (function () {
@@ -19,14 +19,14 @@
     0.1,
     1000
   );
-  camera.position.set(0, 0, 3.5);
+  camera.position.set(0, 0, 3);
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
     alpha: true,
   });
-  renderer.setClearColor(0x0a1f1f, 0);
+  renderer.setClearColor(0x000000, 0);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
@@ -42,87 +42,106 @@
   const group = new THREE.Group();
   scene.add(group);
 
-  // Kian's color palette - vibrant cyan and orange
+  // Colors matching Kian's palette
   const CYAN = new THREE.Color(0x20d9d9);
   const ORANGE = new THREE.Color(0xff8c42);
-  const TEAL = new THREE.Color(0x008080);
+  const TEAL = new THREE.Color(0x00a8a8);
+  const BRASS = new THREE.Color(0xc6a15b);
 
   const SECTION_TINTS = {
     hero: { a: CYAN, b: ORANGE },
-    about: { a: ORANGE, b: CYAN },
-    ventures: { a: CYAN, b: ORANGE },
+    about: { a: ORANGE, b: TEAL },
+    ventures: { a: CYAN, b: BRASS },
     achievements: { a: ORANGE, b: CYAN },
     now: { a: TEAL, b: ORANGE },
-    contact: { a: CYAN, b: ORANGE },
+    contact: { a: BRASS, b: CYAN },
   };
 
-  // Create toroidal knot geometry
-  function createToroidalKnot() {
-    const curve = new THREE.TorusKnotCurve(10, 3);
-    const points = curve.getPoints(500);
-    
-    // Main knot line
-    const knotGeo = new THREE.BufferGeometry().setFromPoints(points);
-    const knotMat1 = new THREE.LineBasicMaterial({
-      color: CYAN,
-      linewidth: 2,
-      transparent: true,
-      opacity: 0.8,
-    });
-    const knot1 = new THREE.Line(knotGeo, knotMat1);
-    group.add(knot1);
+  // Create flowing ribbon mesh structure (like Kian's)
+  function createFlowingMesh() {
+    const geometry = new THREE.BufferGeometry();
+    const vertices = [];
+    const indices = [];
 
-    // Secondary knot with offset (creates 3D effect)
-    const offsetPoints = points.map(p => {
-      const p2 = p.clone();
-      p2.x += 0.15;
-      p2.z += 0.15;
-      return p2;
-    });
-    const knotGeo2 = new THREE.BufferGeometry().setFromPoints(offsetPoints);
-    const knotMat2 = new THREE.LineBasicMaterial({
-      color: ORANGE,
-      linewidth: 2,
-      transparent: true,
-      opacity: 0.6,
-    });
-    const knot2 = new THREE.Line(knotGeo2, knotMat2);
-    group.add(knot2);
+    // Create a flowing, organic mesh
+    const segments = 80;
+    const loops = 6;
+    const amplitude = 0.8;
 
-    // Connecting lines for 3D mesh effect
-    for (let i = 0; i < points.length - 1; i += 50) {
-      const geo = new THREE.BufferGeometry().setFromPoints([points[i], offsetPoints[i]]);
-      const mat = new THREE.LineBasicMaterial({
-        color: CYAN,
-        transparent: true,
-        opacity: 0.3,
-        linewidth: 1,
-      });
-      group.add(new THREE.Line(geo, mat));
+    for (let i = 0; i <= segments; i++) {
+      for (let j = 0; j <= loops; j++) {
+        const u = i / segments;
+        const v = j / loops;
+        
+        // Create flowing wave pattern
+        const x = (u - 0.5) * 3;
+        const y = Math.sin(u * Math.PI * 3) * amplitude * Math.cos(v * Math.PI * 2);
+        const z = Math.cos(u * Math.PI * 3) * amplitude * Math.sin(v * Math.PI * 2) + u * 0.5;
+
+        vertices.push(x, y, z);
+      }
     }
+
+    // Create indices for the mesh
+    for (let i = 0; i < segments; i++) {
+      for (let j = 0; j < loops; j++) {
+        const a = i * (loops + 1) + j;
+        const b = a + 1;
+        const c = (i + 1) * (loops + 1) + j;
+        const d = c + 1;
+
+        indices.push(a, c, b);
+        indices.push(b, c, d);
+      }
+    }
+
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(vertices), 3));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+    geometry.computeVertexNormals();
+
+    // Wireframe material - cyan and orange lines
+    const material = new THREE.MeshBasicMaterial({
+      color: CYAN,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.7,
+      linewidth: 1.5,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    return { mesh, material };
   }
 
-  createToroidalKnot();
+  const { mesh: flowMesh, material: flowMat } = createFlowingMesh();
+  group.add(flowMesh);
 
-  group.rotation.x = 0.3;
-  group.rotation.y = 0.6;
-  group.rotation.z = 0.2;
+  // Add secondary mesh with offset (creates depth)
+  const { mesh: flowMesh2, material: flowMat2 } = createFlowingMesh();
+  flowMesh2.scale.set(1.2, 1.2, 1.2);
+  flowMat2.color.copy(ORANGE);
+  flowMat2.opacity = 0.4;
+  group.add(flowMesh2);
+
+  // Initial rotation
+  group.rotation.x = 0.2;
+  group.rotation.y = 0.3;
+  group.rotation.z = 0.1;
 
   let targetRotY = group.rotation.y;
   let targetRotX = group.rotation.x;
-  let targetRotZ = group.rotation.z;
 
   window.addEventListener("mousemove", (e) => {
     const nx = e.clientX / window.innerWidth - 0.5;
     const ny = e.clientY / window.innerHeight - 0.5;
-    targetRotY = 0.6 + nx * 0.5;
-    targetRotX = 0.3 + ny * 0.3;
-    targetRotZ = 0.2 + nx * 0.2;
+    targetRotY = 0.3 + nx * 0.4;
+    targetRotX = 0.2 + ny * 0.3;
   });
 
   // ---- scroll-driven section tint ----
   const sectionEls = Array.from(document.querySelectorAll("[data-tint]"));
   let currentTint = SECTION_TINTS.hero;
+  const tmpColorA = new THREE.Color();
+  const tmpColorB = new THREE.Color();
 
   function updateActiveSectionTint() {
     if (!sectionEls.length) return;
@@ -152,13 +171,20 @@
   function animate() {
     raf = requestAnimationFrame(animate);
     
-    // Smooth rotation
-    group.rotation.y += 0.001;
+    // Continuous slow rotation
+    group.rotation.y += 0.0006;
+    
+    // Smooth mouse interaction
     if (!prefersReducedMotion) {
       group.rotation.x += (targetRotX - group.rotation.x) * 0.04;
       group.rotation.y += (targetRotY - group.rotation.y) * 0.02;
-      group.rotation.z += (targetRotZ - group.rotation.z) * 0.04;
     }
+
+    // Color transitions based on scroll position
+    tmpColorA.lerpColors(flowMat.color, currentTint.a, 0.02);
+    tmpColorB.lerpColors(flowMat2.color, currentTint.b, 0.02);
+    flowMat.color.copy(tmpColorA);
+    flowMat2.color.copy(tmpColorB);
 
     renderer.render(scene, camera);
   }
