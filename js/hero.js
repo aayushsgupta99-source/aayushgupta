@@ -1,8 +1,7 @@
 /* ============================================================
-   Hero signature visual: a rotating wireframe globe with a
-   handful of great-circle "connection" arcs — a nod to global
-   strategy, diplomacy (MUN) and building something that scales
-   across a community/network. Ambient, not interactive-heavy.
+   Toroidal Knot Animation (Kian Shah style)
+   Beautiful 3D twisted knot wireframe that shifts colors as
+   you scroll through sections. Cyan and orange aesthetic.
    ============================================================ */
 
 (function () {
@@ -15,23 +14,25 @@
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
-    45,
-    canvas.clientWidth / canvas.clientHeight,
+    60,
+    window.innerWidth / window.innerHeight,
     0.1,
-    100
+    1000
   );
-  camera.position.set(0, 0, 7.2);
+  camera.position.set(0, 0, 3.5);
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
     alpha: true,
   });
-  renderer.setClearColor(0x000000, 0);
+  renderer.setClearColor(0x0a1f1f, 0);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   function resize() {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
     renderer.setSize(w, h, false);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     camera.aspect = w / h;
@@ -41,116 +42,124 @@
   const group = new THREE.Group();
   scene.add(group);
 
-  const BRASS = 0xc6a15b;
-  const SLATE = 0x7c93a8;
+  // Kian's color palette - vibrant cyan and orange
+  const CYAN = new THREE.Color(0x20d9d9);
+  const ORANGE = new THREE.Color(0xff8c42);
+  const TEAL = new THREE.Color(0x008080);
 
-  // Base wireframe sphere (latitude/longitude look)
-  const sphereGeo = new THREE.SphereGeometry(2.4, 28, 20);
-  const sphereMat = new THREE.MeshBasicMaterial({
-    color: SLATE,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.28,
-  });
-  const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-  group.add(sphere);
+  const SECTION_TINTS = {
+    hero: { a: CYAN, b: ORANGE },
+    about: { a: ORANGE, b: CYAN },
+    ventures: { a: CYAN, b: ORANGE },
+    achievements: { a: ORANGE, b: CYAN },
+    now: { a: TEAL, b: ORANGE },
+    contact: { a: CYAN, b: ORANGE },
+  };
 
-  // Slightly larger, sparser brass shell for depth
-  const sphereGeo2 = new THREE.SphereGeometry(2.42, 14, 10);
-  const sphereMat2 = new THREE.MeshBasicMaterial({
-    color: BRASS,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.35,
-  });
-  const sphere2 = new THREE.Mesh(sphereGeo2, sphereMat2);
-  group.add(sphere2);
-
-  // Great-circle "connection" arcs
-  function makeArc(latA, lonA, latB, lonB, color, segments) {
-    const r = 2.46;
-    const toVec = (lat, lon) => {
-      const phi = (90 - lat) * (Math.PI / 180);
-      const theta = (lon + 180) * (Math.PI / 180);
-      return new THREE.Vector3(
-        -r * Math.sin(phi) * Math.cos(theta),
-        r * Math.cos(phi),
-        r * Math.sin(phi) * Math.sin(theta)
-      );
-    };
-    const a = toVec(latA, lonA);
-    const b = toVec(latB, lonB);
-    const mid = a.clone().add(b).multiplyScalar(0.5);
-    mid.setLength(r * 1.35);
-
-    const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
-    const points = curve.getPoints(segments || 48);
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const mat = new THREE.LineBasicMaterial({
-      color,
+  // Create toroidal knot geometry
+  function createToroidalKnot() {
+    const curve = new THREE.TorusKnotCurve(10, 3);
+    const points = curve.getPoints(500);
+    
+    // Main knot line
+    const knotGeo = new THREE.BufferGeometry().setFromPoints(points);
+    const knotMat1 = new THREE.LineBasicMaterial({
+      color: CYAN,
+      linewidth: 2,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.8,
     });
-    return new THREE.Line(geo, mat);
+    const knot1 = new THREE.Line(knotGeo, knotMat1);
+    group.add(knot1);
+
+    // Secondary knot with offset (creates 3D effect)
+    const offsetPoints = points.map(p => {
+      const p2 = p.clone();
+      p2.x += 0.15;
+      p2.z += 0.15;
+      return p2;
+    });
+    const knotGeo2 = new THREE.BufferGeometry().setFromPoints(offsetPoints);
+    const knotMat2 = new THREE.LineBasicMaterial({
+      color: ORANGE,
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const knot2 = new THREE.Line(knotGeo2, knotMat2);
+    group.add(knot2);
+
+    // Connecting lines for 3D mesh effect
+    for (let i = 0; i < points.length - 1; i += 50) {
+      const geo = new THREE.BufferGeometry().setFromPoints([points[i], offsetPoints[i]]);
+      const mat = new THREE.LineBasicMaterial({
+        color: CYAN,
+        transparent: true,
+        opacity: 0.3,
+        linewidth: 1,
+      });
+      group.add(new THREE.Line(geo, mat));
+    }
   }
 
-  const arcs = [
-    makeArc(28, -80, 51, 0, BRASS), // NY - London
-    makeArc(51, 0, 35, 139, BRASS), // London - Tokyo
-    makeArc(19, 72, 51, 0, SLATE), // Mumbai - London
-    makeArc(19, 72, 1, 103, SLATE), // Mumbai - Singapore
-    makeArc(35, 139, -33, 151, SLATE), // Tokyo - Sydney
-  ];
-  arcs.forEach((arc) => group.add(arc));
+  createToroidalKnot();
 
-  // Node points at arc endpoints
-  const nodeGeo = new THREE.SphereGeometry(0.035, 8, 8);
-  const nodeMat = new THREE.MeshBasicMaterial({ color: 0xede8dc });
-  const nodeCoords = [
-    [28, -80],
-    [51, 0],
-    [35, 139],
-    [19, 72],
-    [1, 103],
-    [-33, 151],
-  ];
-  nodeCoords.forEach(([lat, lon]) => {
-    const r = 2.46;
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lon + 180) * (Math.PI / 180);
-    const node = new THREE.Mesh(nodeGeo, nodeMat);
-    node.position.set(
-      -r * Math.sin(phi) * Math.cos(theta),
-      r * Math.cos(phi),
-      r * Math.sin(phi) * Math.sin(theta)
-    );
-    group.add(node);
-  });
+  group.rotation.x = 0.3;
+  group.rotation.y = 0.6;
+  group.rotation.z = 0.2;
 
-  group.rotation.x = 0.32;
-  group.rotation.y = -0.4;
-
-  // subtle mouse parallax
   let targetRotY = group.rotation.y;
   let targetRotX = group.rotation.x;
+  let targetRotZ = group.rotation.z;
+
   window.addEventListener("mousemove", (e) => {
     const nx = e.clientX / window.innerWidth - 0.5;
     const ny = e.clientY / window.innerHeight - 0.5;
-    targetRotY = -0.4 + nx * 0.35;
-    targetRotX = 0.32 + ny * 0.2;
+    targetRotY = 0.6 + nx * 0.5;
+    targetRotX = 0.3 + ny * 0.3;
+    targetRotZ = 0.2 + nx * 0.2;
   });
+
+  // ---- scroll-driven section tint ----
+  const sectionEls = Array.from(document.querySelectorAll("[data-tint]"));
+  let currentTint = SECTION_TINTS.hero;
+
+  function updateActiveSectionTint() {
+    if (!sectionEls.length) return;
+    const mid = window.innerHeight * 0.5;
+    let closest = sectionEls[0];
+    let closestDist = Infinity;
+    sectionEls.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      const center = rect.top + rect.height / 2;
+      const dist = Math.abs(center - mid);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = el;
+      }
+    });
+    const key = closest.getAttribute("data-tint");
+    currentTint = SECTION_TINTS[key] || SECTION_TINTS.hero;
+  }
+
+  window.addEventListener("scroll", updateActiveSectionTint, { passive: true });
 
   resize();
   window.addEventListener("resize", resize);
+  updateActiveSectionTint();
 
   let raf = null;
   function animate() {
     raf = requestAnimationFrame(animate);
-    group.rotation.y += 0.0016;
+    
+    // Smooth rotation
+    group.rotation.y += 0.001;
     if (!prefersReducedMotion) {
-      group.rotation.x += (targetRotX - group.rotation.x) * 0.02;
-      group.rotation.y += (targetRotY - group.rotation.y) * 0.0006;
+      group.rotation.x += (targetRotX - group.rotation.x) * 0.04;
+      group.rotation.y += (targetRotY - group.rotation.y) * 0.02;
+      group.rotation.z += (targetRotZ - group.rotation.z) * 0.04;
     }
+
     renderer.render(scene, camera);
   }
 
@@ -160,19 +169,12 @@
     animate();
   }
 
-  // pause when off-screen to save battery
-  const io = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          if (!raf && !prefersReducedMotion) animate();
-        } else if (raf) {
-          cancelAnimationFrame(raf);
-          raf = null;
-        }
-      });
-    },
-    { threshold: 0.05 }
-  );
-  io.observe(canvas);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && raf) {
+      cancelAnimationFrame(raf);
+      raf = null;
+    } else if (!document.hidden && !raf && !prefersReducedMotion) {
+      animate();
+    }
+  });
 })();
