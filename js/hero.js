@@ -1,7 +1,6 @@
 /* ============================================================
-   Kian Shah Style 3D Mesh Animation
-   Beautiful flowing 3D ribbon structure that morphs and changes
-   colors as you scroll. Text layered on top with z-index control.
+   Kian Shah Style 3D Flowing Mesh Animation
+   Beautiful ribbon structure with cyan and orange colors
    ============================================================ */
 
 (function () {
@@ -14,12 +13,12 @@
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
-    60,
+    75,
     window.innerWidth / window.innerHeight,
     0.1,
     1000
   );
-  camera.position.set(0, 0, 3);
+  camera.position.z = 2.5;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -42,52 +41,48 @@
   const group = new THREE.Group();
   scene.add(group);
 
-  // Colors matching Kian's palette
+  // Colors
   const CYAN = new THREE.Color(0x20d9d9);
   const ORANGE = new THREE.Color(0xff8c42);
   const TEAL = new THREE.Color(0x00a8a8);
-  const BRASS = new THREE.Color(0xc6a15b);
 
   const SECTION_TINTS = {
     hero: { a: CYAN, b: ORANGE },
     about: { a: ORANGE, b: TEAL },
-    ventures: { a: CYAN, b: BRASS },
+    ventures: { a: CYAN, b: ORANGE },
     achievements: { a: ORANGE, b: CYAN },
     now: { a: TEAL, b: ORANGE },
-    contact: { a: BRASS, b: CYAN },
+    contact: { a: CYAN, b: ORANGE },
   };
 
-  // Create flowing ribbon mesh structure (like Kian's)
-  function createFlowingMesh() {
+  // Create flowing mesh with visible wireframe
+  function createMesh() {
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
     const indices = [];
 
-    // Create a flowing, organic mesh
-    const segments = 80;
-    const loops = 6;
-    const amplitude = 0.8;
+    const segments = 40;
+    const rings = 8;
 
     for (let i = 0; i <= segments; i++) {
-      for (let j = 0; j <= loops; j++) {
+      for (let j = 0; j <= rings; j++) {
         const u = i / segments;
-        const v = j / loops;
-        
-        // Create flowing wave pattern
-        const x = (u - 0.5) * 3;
-        const y = Math.sin(u * Math.PI * 3) * amplitude * Math.cos(v * Math.PI * 2);
-        const z = Math.cos(u * Math.PI * 3) * amplitude * Math.sin(v * Math.PI * 2) + u * 0.5;
+        const v = (j / rings) * Math.PI * 2;
+
+        const x = Math.cos(u * Math.PI * 4) * 1.2 * Math.cos(v);
+        const y = Math.sin(u * Math.PI * 4) * 1.2;
+        const z = Math.cos(u * Math.PI * 4) * 1.2 * Math.sin(v);
 
         vertices.push(x, y, z);
       }
     }
 
-    // Create indices for the mesh
+    // Connect vertices
     for (let i = 0; i < segments; i++) {
-      for (let j = 0; j < loops; j++) {
-        const a = i * (loops + 1) + j;
+      for (let j = 0; j < rings; j++) {
+        const a = i * (rings + 1) + j;
         const b = a + 1;
-        const c = (i + 1) * (loops + 1) + j;
+        const c = (i + 1) * (rings + 1) + j;
         const d = c + 1;
 
         indices.push(a, c, b);
@@ -97,35 +92,35 @@
 
     geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(vertices), 3));
     geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
-    geometry.computeVertexNormals();
 
-    // Wireframe material - cyan and orange lines
-    const material = new THREE.MeshBasicMaterial({
-      color: CYAN,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.7,
-      linewidth: 1.5,
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    return { mesh, material };
+    return geometry;
   }
 
-  const { mesh: flowMesh, material: flowMat } = createFlowingMesh();
-  group.add(flowMesh);
+  const meshGeo = createMesh();
 
-  // Add secondary mesh with offset (creates depth)
-  const { mesh: flowMesh2, material: flowMat2 } = createFlowingMesh();
-  flowMesh2.scale.set(1.2, 1.2, 1.2);
-  flowMat2.color.copy(ORANGE);
-  flowMat2.opacity = 0.4;
-  group.add(flowMesh2);
+  // Cyan wireframe
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: CYAN,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const mesh1 = new THREE.Mesh(meshGeo, wireMat);
+  group.add(mesh1);
 
-  // Initial rotation
-  group.rotation.x = 0.2;
-  group.rotation.y = 0.3;
-  group.rotation.z = 0.1;
+  // Orange secondary mesh
+  const wireMat2 = new THREE.MeshBasicMaterial({
+    color: ORANGE,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.5,
+  });
+  const mesh2 = new THREE.Mesh(meshGeo, wireMat2);
+  mesh2.scale.set(1.3, 1.3, 1.3);
+  group.add(mesh2);
+
+  group.rotation.x = 0.3;
+  group.rotation.y = 0.5;
 
   let targetRotY = group.rotation.y;
   let targetRotX = group.rotation.x;
@@ -133,15 +128,13 @@
   window.addEventListener("mousemove", (e) => {
     const nx = e.clientX / window.innerWidth - 0.5;
     const ny = e.clientY / window.innerHeight - 0.5;
-    targetRotY = 0.3 + nx * 0.4;
-    targetRotX = 0.2 + ny * 0.3;
+    targetRotY = 0.5 + nx * 0.5;
+    targetRotX = 0.3 + ny * 0.3;
   });
 
-  // ---- scroll-driven section tint ----
+  // Scroll-driven color change
   const sectionEls = Array.from(document.querySelectorAll("[data-tint]"));
   let currentTint = SECTION_TINTS.hero;
-  const tmpColorA = new THREE.Color();
-  const tmpColorB = new THREE.Color();
 
   function updateActiveSectionTint() {
     if (!sectionEls.length) return;
@@ -167,24 +160,25 @@
   window.addEventListener("resize", resize);
   updateActiveSectionTint();
 
+  const tmpColorA = new THREE.Color();
+  const tmpColorB = new THREE.Color();
+
   let raf = null;
   function animate() {
     raf = requestAnimationFrame(animate);
-    
-    // Continuous slow rotation
-    group.rotation.y += 0.0006;
-    
-    // Smooth mouse interaction
+
+    // Rotation
+    group.rotation.y += 0.0008;
     if (!prefersReducedMotion) {
-      group.rotation.x += (targetRotX - group.rotation.x) * 0.04;
+      group.rotation.x += (targetRotX - group.rotation.x) * 0.05;
       group.rotation.y += (targetRotY - group.rotation.y) * 0.02;
     }
 
-    // Color transitions based on scroll position
-    tmpColorA.lerpColors(flowMat.color, currentTint.a, 0.02);
-    tmpColorB.lerpColors(flowMat2.color, currentTint.b, 0.02);
-    flowMat.color.copy(tmpColorA);
-    flowMat2.color.copy(tmpColorB);
+    // Color interpolation
+    tmpColorA.lerpColors(wireMat.color, currentTint.a, 0.02);
+    tmpColorB.lerpColors(wireMat2.color, currentTint.b, 0.02);
+    wireMat.color.copy(tmpColorA);
+    wireMat2.color.copy(tmpColorB);
 
     renderer.render(scene, camera);
   }
