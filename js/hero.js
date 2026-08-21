@@ -1,25 +1,22 @@
-/* Toroidal Knot - Visible 3D animation */
+/* Toroidal Knot Animation - Visible 3D */
 
 (function () {
   const canvas = document.getElementById("hero-canvas");
   if (!canvas || typeof THREE === "undefined") return;
 
   const scene = new THREE.Scene();
-  scene.background = null;
-
   const camera = new THREE.PerspectiveCamera(
-    45,
+    50,
     window.innerWidth / window.innerHeight,
     0.1,
     1000
   );
-  camera.position.z = 3.5;
+  camera.position.z = 3.2;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
-    alpha: true,
-    precision: 'highp'
+    alpha: true
   });
   
   renderer.setClearColor(0x000000, 0);
@@ -38,70 +35,70 @@
   const group = new THREE.Group();
   scene.add(group);
 
-  // Colors
-  const CYAN = new THREE.Color(0x0fa3a3);
-  const ORANGE = new THREE.Color(0xb8532d);
-  const TEAL = new THREE.Color(0x006666);
+  // Colors - muted palette
+  const MINT = new THREE.Color(0x4a9d7f);
+  const TEAL = new THREE.Color(0x2d7a6f);
+  const DUSTY_ORANGE = new THREE.Color(0x8b5a3c);
 
   const SECTION_TINTS = {
-    hero: { a: CYAN, b: ORANGE },
-    about: { a: ORANGE, b: TEAL },
-    ventures: { a: CYAN, b: ORANGE },
-    achievements: { a: ORANGE, b: CYAN },
-    now: { a: TEAL, b: ORANGE },
-    contact: { a: CYAN, b: ORANGE },
+    hero: { a: MINT, b: TEAL },
+    about: { a: DUSTY_ORANGE, b: MINT },
+    ventures: { a: MINT, b: TEAL },
+    achievements: { a: DUSTY_ORANGE, b: MINT },
+    now: { a: TEAL, b: DUSTY_ORANGE },
+    contact: { a: MINT, b: TEAL },
   };
 
   // Create toroidal knot
   const curve = new THREE.TorusKnotCurve(10, 3);
-  const tubeGeometry = new THREE.TubeGeometry(curve, 120, 14, 10, false);
+  const tubeGeometry = new THREE.TubeGeometry(curve, 150, 16, 12, false);
 
-  // Material 1 - Cyan
+  // Primary mesh - Mint
   const material1 = new THREE.MeshPhongMaterial({
-    color: CYAN,
-    emissive: new THREE.Color(0x0fa3a3),
-    emissiveIntensity: 0.25,
-    shininess: 40,
+    color: MINT,
+    emissive: new THREE.Color(0x4a9d7f),
+    emissiveIntensity: 0.2,
+    shininess: 50,
     wireframe: false,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.85,
     side: THREE.DoubleSide
   });
 
   const mesh1 = new THREE.Mesh(tubeGeometry, material1);
   group.add(mesh1);
 
-  // Material 2 - Orange (larger scale for depth)
+  // Secondary mesh - Teal (larger)
   const material2 = new THREE.MeshPhongMaterial({
-    color: ORANGE,
-    emissive: new THREE.Color(0xb8532d),
+    color: TEAL,
+    emissive: new THREE.Color(0x2d7a6f),
     emissiveIntensity: 0.15,
-    shininess: 30,
+    shininess: 40,
     wireframe: false,
     transparent: true,
-    opacity: 0.35,
+    opacity: 0.3,
     side: THREE.DoubleSide
   });
 
   const mesh2 = new THREE.Mesh(tubeGeometry, material2);
-  mesh2.scale.set(1.25, 1.25, 1.25);
+  mesh2.scale.set(1.3, 1.3, 1.3);
   group.add(mesh2);
 
   // Lighting
-  const light1 = new THREE.PointLight(0xffffff, 0.8);
-  light1.position.set(5, 5, 5);
+  const light1 = new THREE.PointLight(0xffffff, 0.7);
+  light1.position.set(4, 4, 4);
   scene.add(light1);
 
-  const light2 = new THREE.PointLight(0xffffff, 0.4);
-  light2.position.set(-5, -5, 5);
+  const light2 = new THREE.PointLight(0xffffff, 0.35);
+  light2.position.set(-4, -4, 3);
   scene.add(light2);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
   scene.add(ambientLight);
 
   // Initial rotation
-  group.rotation.x = 0.2;
-  group.rotation.y = 0.4;
+  group.rotation.x = 0.25;
+  group.rotation.y = 0.35;
   group.rotation.z = 0.1;
 
   let targetRotY = group.rotation.y;
@@ -110,8 +107,8 @@
   window.addEventListener("mousemove", (e) => {
     const nx = e.clientX / window.innerWidth - 0.5;
     const ny = e.clientY / window.innerHeight - 0.5;
-    targetRotY = 0.4 + nx * 0.4;
-    targetRotX = 0.2 + ny * 0.3;
+    targetRotY = 0.35 + nx * 0.35;
+    targetRotX = 0.25 + ny * 0.25;
   });
 
   // Scroll detection
@@ -148,14 +145,12 @@
   function animate() {
     requestAnimationFrame(animate);
 
-    // Rotation
-    group.rotation.y += 0.0006;
-    group.rotation.x += (targetRotX - group.rotation.x) * 0.04;
-    group.rotation.y += (targetRotY - group.rotation.y) * 0.02;
+    group.rotation.y += 0.0005;
+    group.rotation.x += (targetRotX - group.rotation.x) * 0.035;
+    group.rotation.y += (targetRotY - group.rotation.y) * 0.015;
 
-    // Color transitions
-    tmpColor1.lerpColors(material1.color, currentTint.a, 0.015);
-    tmpColor2.lerpColors(material2.color, currentTint.b, 0.015);
+    tmpColor1.lerpColors(material1.color, currentTint.a, 0.01);
+    tmpColor2.lerpColors(material2.color, currentTint.b, 0.01);
     
     material1.color.copy(tmpColor1);
     material1.emissive.copy(tmpColor1);
