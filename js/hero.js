@@ -4,10 +4,7 @@
   const canvas = document.getElementById("hero-canvas");
   if (!canvas || typeof THREE === "undefined") return;
 
-  /* IMPORTANT: match this to your page's background colour in style.css.
-     The occluder mesh is painted this colour, so if they differ you'll
-     see a ghost silhouette around the knot. */
-  const BG = 0x0d1b1a;
+  const BG = 0x0d1419;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
@@ -40,25 +37,24 @@
   const group = new THREE.Group();
   scene.add(group);
 
-  /* ---- geometry: torus knot, p=2 q=3 ---- */
   const mobile = window.innerWidth < 768;
   const geometry = new THREE.TorusKnotGeometry(
-    9,                    // radius
-    3.1,                  // tube thickness
-    mobile ? 220 : 420,   // segments along the loop
-    mobile ? 28 : 44,     // segments around the tube
-    2, 3                  // p, q -> the winding
+    9,
+    3.1,
+    mobile ? 220 : 420,
+    mobile ? 28 : 44,
+    2,
+    3
   );
 
-  /* ---- vertical colour ramp: teal (bottom) -> pale -> amber -> red (top) ---- */
   const stops = [
-    { t: 0.00, c: 0x06333a },
+    { t: 0.0, c: 0x06333a },
     { t: 0.18, c: 0x11888c },
     { t: 0.34, c: 0x38b3a6 },
     { t: 0.48, c: 0xd8d2b8 },
     { t: 0.62, c: 0xe3a838 },
-    { t: 0.80, c: 0xd4611c },
-    { t: 1.00, c: 0x9e2115 }
+    { t: 0.8, c: 0xd4611c },
+    { t: 1.0, c: 0x9e2115 }
   ].map((s) => ({ t: s.t, c: new THREE.Color(s.c) }));
 
   function ramp(t) {
@@ -91,8 +87,6 @@
   }
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
-  /* solid pass in the page background colour. This hides the wireframe
-     behind the surface, which is what creates the sense of depth. */
   const occluder = new THREE.Mesh(
     geometry,
     new THREE.MeshBasicMaterial({
@@ -104,7 +98,6 @@
   );
   group.add(occluder);
 
-  /* wireframe pass carrying the gradient */
   const wireMaterial = new THREE.MeshBasicMaterial({
     vertexColors: true,
     wireframe: true,
@@ -113,13 +106,10 @@
   });
   group.add(new THREE.Mesh(geometry, wireMaterial));
 
-  /* No lights needed — MeshBasicMaterial is unlit. */
-
   group.rotation.x = 0.5;
   group.rotation.y = 0.3;
   group.rotation.z = 0.15;
 
-  /* ---- mouse parallax ---- */
   let targetRotY = group.rotation.y;
   let targetRotX = group.rotation.x;
   let spin = 0;
@@ -131,16 +121,13 @@
     targetRotX = 0.5 + ny * 0.25;
   });
 
-  /* ---- per-section tint ----
-     vertexColors multiply by material.color, so keeping these near white
-     shifts the whole gradient's warmth without crushing it to black. */
   const SECTION_TINTS = {
-    hero:         new THREE.Color(0xffffff),
-    about:        new THREE.Color(0xffd9c0),
-    ventures:     new THREE.Color(0xd9fff2),
+    hero: new THREE.Color(0xffffff),
+    about: new THREE.Color(0xffd9c0),
+    ventures: new THREE.Color(0xd9fff2),
     achievements: new THREE.Color(0xffe3b0),
-    now:          new THREE.Color(0xc8fff0),
-    contact:      new THREE.Color(0xffffff)
+    now: new THREE.Color(0xc8fff0),
+    contact: new THREE.Color(0xffffff)
   };
 
   const sectionEls = Array.from(document.querySelectorAll("[data-tint]"));
