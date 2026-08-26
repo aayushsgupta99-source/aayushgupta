@@ -1,33 +1,38 @@
-/* Toroidal Knot Animation - Visible 3D */
+/* Toroidal Knot Animation - wireframe with vertical gradient */
 
 (function () {
   const canvas = document.getElementById("hero-canvas");
   if (!canvas || typeof THREE === "undefined") return;
 
+  /* IMPORTANT: match this to your page's background colour in style.css.
+     The occluder mesh is painted this colour, so if they differ you'll
+     see a ghost silhouette around the knot. */
+  const BG = 0x0d1b1a;
+
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
-    50,
+    45,
     window.innerWidth / window.innerHeight,
     0.1,
     1000
   );
-  camera.position.z = 3.2;
+  camera.position.z = 34;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
     alpha: true
   });
-  
+
   renderer.setClearColor(0x000000, 0);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   function resize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
     renderer.setSize(w, h);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
@@ -35,83 +40,109 @@
   const group = new THREE.Group();
   scene.add(group);
 
-  // Colors - muted palette
-  const MINT = new THREE.Color(0x4a9d7f);
-  const TEAL = new THREE.Color(0x2d7a6f);
-  const DUSTY_ORANGE = new THREE.Color(0x8b5a3c);
+  /* ---- geometry: torus knot, p=2 q=3 ---- */
+  const mobile = window.innerWidth < 768;
+  const geometry = new THREE.TorusKnotGeometry(
+    9,                    // radius
+    3.1,                  // tube thickness
+    mobile ? 220 : 420,   // segments along the loop
+    mobile ? 28 : 44,     // segments around the tube
+    2, 3                  // p, q -> the winding
+  );
 
-  const SECTION_TINTS = {
-    hero: { a: MINT, b: TEAL },
-    about: { a: DUSTY_ORANGE, b: MINT },
-    ventures: { a: MINT, b: TEAL },
-    achievements: { a: DUSTY_ORANGE, b: MINT },
-    now: { a: TEAL, b: DUSTY_ORANGE },
-    contact: { a: MINT, b: TEAL },
-  };
+  /* ---- vertical colour ramp: teal (bottom) -> pale -> amber -> red (top) ---- */
+  const stops = [
+    { t: 0.00, c: 0x06333a },
+    { t: 0.18, c: 0x11888c },
+    { t: 0.34, c: 0x38b3a6 },
+    { t: 0.48, c: 0xd8d2b8 },
+    { t: 0.62, c: 0xe3a838 },
+    { t: 0.80, c: 0xd4611c },
+    { t: 1.00, c: 0x9e2115 }
+  ].map((s) => ({ t: s.t, c: new THREE.Color(s.c) }));
 
-  // Create toroidal knot
-  const curve = new THREE.TorusKnotCurve(10, 3);
-  const tubeGeometry = new THREE.TubeGeometry(curve, 150, 16, 12, false);
+  function ramp(t) {
+    for (let i = 0; i < stops.length - 1; i++) {
+      const a = stops[i];
+      const b = stops[i + 1];
+      if (t <= b.t) {
+        const k = (t - a.t) / (b.t - a.t);
+        return a.c.clone().lerp(b.c, Math.max(0, Math.min(1, k)));
+      }
+    }
+    return stops[stops.length - 1].c.clone();
+  }
 
-  // Primary mesh - Mint
-  const material1 = new THREE.MeshPhongMaterial({
-    color: MINT,
-    emissive: new THREE.Color(0x4a9d7f),
-    emissiveIntensity: 0.2,
-    shininess: 50,
-    wireframe: false,
+  const pos = geometry.attributes.position;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const c = ramp((pos.getY(i) - minY) / (maxY - minY));
+    colors[i * 3] = c.r;
+    colors[i * 3 + 1] = c.g;
+    colors[i * 3 + 2] = c.b;
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+  /* solid pass in the page background colour. This hides the wireframe
+     behind the surface, which is what creates the sense of depth. */
+  const occluder = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({
+      color: BG,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1
+    })
+  );
+  group.add(occluder);
+
+  /* wireframe pass carrying the gradient */
+  const wireMaterial = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    wireframe: true,
     transparent: true,
-    opacity: 0.85,
-    side: THREE.DoubleSide
+    opacity: 0.92
   });
+  group.add(new THREE.Mesh(geometry, wireMaterial));
 
-  const mesh1 = new THREE.Mesh(tubeGeometry, material1);
-  group.add(mesh1);
+  /* No lights needed — MeshBasicMaterial is unlit. */
 
-  // Secondary mesh - Teal (larger)
-  const material2 = new THREE.MeshPhongMaterial({
-    color: TEAL,
-    emissive: new THREE.Color(0x2d7a6f),
-    emissiveIntensity: 0.15,
-    shininess: 40,
-    wireframe: false,
-    transparent: true,
-    opacity: 0.3,
-    side: THREE.DoubleSide
-  });
+  group.rotation.x = 0.5;
+  group.rotation.y = 0.3;
+  group.rotation.z = 0.15;
 
-  const mesh2 = new THREE.Mesh(tubeGeometry, material2);
-  mesh2.scale.set(1.3, 1.3, 1.3);
-  group.add(mesh2);
-
-  // Lighting
-  const light1 = new THREE.PointLight(0xffffff, 0.7);
-  light1.position.set(4, 4, 4);
-  scene.add(light1);
-
-  const light2 = new THREE.PointLight(0xffffff, 0.35);
-  light2.position.set(-4, -4, 3);
-  scene.add(light2);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
-  scene.add(ambientLight);
-
-  // Initial rotation
-  group.rotation.x = 0.25;
-  group.rotation.y = 0.35;
-  group.rotation.z = 0.1;
-
+  /* ---- mouse parallax ---- */
   let targetRotY = group.rotation.y;
   let targetRotX = group.rotation.x;
+  let spin = 0;
 
   window.addEventListener("mousemove", (e) => {
     const nx = e.clientX / window.innerWidth - 0.5;
     const ny = e.clientY / window.innerHeight - 0.5;
-    targetRotY = 0.35 + nx * 0.35;
-    targetRotX = 0.25 + ny * 0.25;
+    targetRotY = 0.3 + nx * 0.35;
+    targetRotX = 0.5 + ny * 0.25;
   });
 
-  // Scroll detection
+  /* ---- per-section tint ----
+     vertexColors multiply by material.color, so keeping these near white
+     shifts the whole gradient's warmth without crushing it to black. */
+  const SECTION_TINTS = {
+    hero:         new THREE.Color(0xffffff),
+    about:        new THREE.Color(0xffd9c0),
+    ventures:     new THREE.Color(0xd9fff2),
+    achievements: new THREE.Color(0xffe3b0),
+    now:          new THREE.Color(0xc8fff0),
+    contact:      new THREE.Color(0xffffff)
+  };
+
   const sectionEls = Array.from(document.querySelectorAll("[data-tint]"));
   let currentTint = SECTION_TINTS.hero;
 
@@ -139,23 +170,14 @@
   window.addEventListener("resize", resize);
   updateActiveSectionTint();
 
-  const tmpColor1 = new THREE.Color();
-  const tmpColor2 = new THREE.Color();
-
   function animate() {
     requestAnimationFrame(animate);
 
-    group.rotation.y += 0.0005;
+    spin += 0.0022;
+    group.rotation.y += (targetRotY + spin - group.rotation.y) * 0.02;
     group.rotation.x += (targetRotX - group.rotation.x) * 0.035;
-    group.rotation.y += (targetRotY - group.rotation.y) * 0.015;
 
-    tmpColor1.lerpColors(material1.color, currentTint.a, 0.01);
-    tmpColor2.lerpColors(material2.color, currentTint.b, 0.01);
-    
-    material1.color.copy(tmpColor1);
-    material1.emissive.copy(tmpColor1);
-    material2.color.copy(tmpColor2);
-    material2.emissive.copy(tmpColor2);
+    wireMaterial.color.lerp(currentTint, 0.02);
 
     renderer.render(scene, camera);
   }
