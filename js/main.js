@@ -15,6 +15,19 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  // home page: nav slides in once you leave the hero (or when the top tab is clicked)
+  const overlayNav = document.querySelector(".nav--overlay");
+  const hero = document.getElementById("hero");
+  const navTab = document.querySelector(".nav-tab");
+  if (overlayNav && hero) {
+    const syncNav = () => {
+      overlayNav.classList.toggle("is-shown", hero.getBoundingClientRect().bottom < 120);
+    };
+    window.addEventListener("scroll", syncNav, { passive: true });
+    syncNav();
+    if (navTab) navTab.addEventListener("click", () => overlayNav.classList.add("is-shown"));
+  }
+
   // simple scroll-reveal for cards/sections
   const revealEls = document.querySelectorAll("[data-reveal]");
   if ("IntersectionObserver" in window && revealEls.length) {

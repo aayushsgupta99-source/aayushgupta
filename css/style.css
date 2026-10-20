@@ -1,26 +1,26 @@
 /* ============================================================
    Aayush Gupta — portfolio
-   Tokens: ink / panel / parchment / brass / slate / hairline
-   Display: Fraunces · Body: IBM Plex Sans · Utility: IBM Plex Mono
+   Tokens: ink / panel / parchment / brass (mint accent) / slate / hairline
+   Display + utility: Space Mono · Body: Space Grotesk
    ============================================================ */
 
 :root {
-  --ink: #0c1220;
-  --ink-2: #0a0e18;
-  --panel: #121a2b;
-  --panel-2: #161f34;
-  --parchment: #ede8dc;
-  --parchment-dim: #b9b4a6;
-  --brass: #c6a15b;
-  --brass-dim: #8f7642;
-  --slate: #7c93a8;
-  --slate-dim: #56697a;
-  --hairline: rgba(237, 232, 220, 0.13);
-  --hairline-strong: rgba(237, 232, 220, 0.24);
+  --ink: #0b1a1f;
+  --ink-2: #08151a;
+  --panel: #0f2229;
+  --panel-2: #132a32;
+  --parchment: #e4f3ec;
+  --parchment-dim: #9fb8b1;
+  --brass: #a6e3cf;
+  --brass-dim: #5f9c8b;
+  --slate: #7fc4b4;
+  --slate-dim: #4f7f78;
+  --hairline: rgba(166, 227, 207, 0.12);
+  --hairline-strong: rgba(166, 227, 207, 0.24);
 
-  --font-display: "Fraunces", "Iowan Old Style", serif;
-  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+  --font-display: "Space Mono", "SF Mono", Consolas, monospace;
+  --font-body: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Space Mono", "SF Mono", Consolas, monospace;
 
   --nav-h: 72px;
   --max-w: 880px;
@@ -39,7 +39,7 @@ html {
 
 body {
   margin: 0;
-  background: var(--ink);
+  background: radial-gradient(120% 90% at 85% 40%, #0a2a33 0%, var(--ink) 55%, #0d1716 100%) fixed var(--ink);
   color: var(--parchment);
   font-family: var(--font-body);
   font-size: 16px;
@@ -113,7 +113,7 @@ section:last-of-type { border-bottom: none; }
   height: var(--nav-h);
   display: flex;
   align-items: center;
-  background: rgba(12, 18, 32, 0.82);
+  background: rgba(11, 26, 31, 0.82);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--hairline);
 }
@@ -203,27 +203,12 @@ section:last-of-type { border-bottom: none; }
 
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  text-align: center;
   overflow: hidden;
-  padding: 40px 24px;
-}
-
-/* Background canvas layer */
-.hero__canvas-wrapper {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0 clamp(24px, 5.7vw, 120px);
 }
 
 .strip-canvas {
@@ -232,55 +217,70 @@ section:last-of-type { border-bottom: none; }
   display: block;
 }
 
-/* Content layer on top of animation */
 .hero__content {
   position: relative;
   z-index: 10;
-  pointer-events: auto;
   max-width: 100%;
 }
 
+/* big extruded block letters: the stacked shadows build the 3D sides */
 .hero__name {
   font-family: var(--font-display);
-  font-size: clamp(60px, 16vw, 160px);
+  font-size: clamp(64px, 13.2vw, 270px);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
+  line-height: 0.98;
   text-transform: uppercase;
-  color: #4a9d7f;
-  text-shadow: 
-    0 0 15px rgba(74, 157, 127, 0.4),
-    0 0 30px rgba(74, 157, 127, 0.2);
+  color: var(--brass);
   margin: 0;
-  line-height: 1;
+}
+.hero__name span {
   display: block;
-  white-space: nowrap;
-  overflow: visible;
-  width: auto;
+  width: fit-content;
+  background: linear-gradient(100deg, #8fcfb9 0%, #a6e3cf 55%, #b7f0dc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter:
+    drop-shadow(-1px 1px 0 #6fae9b)
+    drop-shadow(-1px 1px 0 #5f9c8b)
+    drop-shadow(-1px 1px 0 #528a7b)
+    drop-shadow(-1px 1px 0 #477a6d)
+    drop-shadow(-2px 2px 0 #3c695e)
+    drop-shadow(-6px 10px 18px rgba(0, 0, 0, 0.45));
+}
+
+.hero__tagline {
+  margin: clamp(18px, 2.4vw, 40px) 0 0;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: clamp(11px, 0.95vw, 17px);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--brass-dim);
 }
 
 .hero__scroll {
-  position: fixed;
+  position: absolute;
   bottom: 34px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: clamp(24px, 5.7vw, 120px);
   z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
+  gap: 40px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--parchment);
   pointer-events: none;
 }
 
-.hero__scroll svg { 
+.hero__scroll svg {
   animation: bob 1.8s ease-in-out infinite;
-  stroke: #4a9d7f;
-  width: 16px;
-  height: 16px;
+  stroke: var(--parchment);
+  width: 18px;
+  height: 18px;
 }
 
 @keyframes bob {
@@ -288,25 +288,38 @@ section:last-of-type { border-bottom: none; }
   50% { transform: translateY(6px); }
 }
 
-@media (max-width: 1024px) {
-  .hero__name {
-    font-size: clamp(50px, 14vw, 120px);
-    white-space: normal;
-  }
+@media (max-width: 768px) {
+  .hero__name { font-size: clamp(56px, 19vw, 140px); }
+  .hero__tagline { letter-spacing: 0.16em; line-height: 1.8; }
 }
 
-@media (max-width: 768px) {
-  .hero {
-    padding: 40px 20px;
-    min-height: auto;
-    padding-bottom: 100px;
-  }
-  
-  .hero__name {
-    font-size: clamp(40px, 12vw, 90px);
-    white-space: normal;
-  }
+/* ---------- home nav: hidden on the hero, a small tab hints at it ---------- */
+
+.nav--overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  transform: translateY(-100%);
+  transition: transform 0.35s ease;
 }
+.nav--overlay.is-shown { transform: translateY(0); }
+
+.nav-tab {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 49;
+  width: 58px;
+  height: 6px;
+  margin-left: -29px;
+  border-radius: 0 0 4px 4px;
+  background: rgba(166, 227, 207, 0.22);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: height 0.2s ease, background 0.2s ease;
+}
+.nav-tab:hover { height: 12px; background: rgba(166, 227, 207, 0.45); }
 
 /* ---------- page header ---------- */
 
@@ -500,14 +513,14 @@ section:last-of-type { border-bottom: none; }
 }
 
 .strip-section--hero {
-  align-items: center;
-  text-align: center;
-  min-height: calc(100svh - var(--nav-h));
-  padding-top: 40px;
+  align-items: flex-start;
+  text-align: left;
+  min-height: 100svh;
+  padding: 0 clamp(24px, 5.7vw, 120px);
 }
 
 .panel {
-  background: rgba(12, 18, 32, 0.66);
+  background: rgba(11, 26, 31, 0.68);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--hairline-strong);
@@ -518,6 +531,7 @@ section:last-of-type { border-bottom: none; }
 @media (max-width: 640px) {
   .panel { padding: 26px; }
   .strip-section { padding: 80px 0; }
+  .strip-section--hero { padding: 0 24px; }
 }
 
 .strip-section .eyebrow { margin-bottom: 6px; }
