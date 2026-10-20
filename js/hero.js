@@ -39,11 +39,12 @@
     const halfH = Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
     const halfW = halfH * camera.aspect;
     if (w < 768) {
-      group.position.set(halfW * 0.7, halfH * 0.68, -8);
-      group.scale.setScalar(0.85);
+      group.position.set(halfW * 0.55, halfH * 0.62, -8);
+      group.scale.setScalar(0.6);
     } else {
-      group.position.set(halfW * 0.68, halfH * 0.04, 0);
-      group.scale.setScalar(1.15);
+      // fit the knot to the viewport height so it stays whole on short laptop screens
+      group.position.set(halfW * 0.58, 0, 0);
+      group.scale.setScalar(Math.min(0.78, (halfW * 0.38) / 12.5));
     }
   }
 
