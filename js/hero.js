@@ -94,22 +94,50 @@
   group.rotation.set(-0.35, 0.25, 0.2);
   scene.add(group);
 
+  // strands that come close to the camera dissolve instead of filling the screen
+  const nearFade = { uFadeNear: { value: 0 }, uFadeFar: { value: 0.001 } };
+  function withNearFade(material, cutout) {
+    material.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, nearFade);
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nvarying float vViewDepth;")
+        .replace("#include <project_vertex>", "#include <project_vertex>\nvViewDepth = -mvPosition.z;");
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nvarying float vViewDepth;\nuniform float uFadeNear;\nuniform float uFadeFar;"
+        )
+        .replace(
+          "#include <fog_fragment>",
+          "#include <fog_fragment>\nfloat nearK = smoothstep(uFadeNear, uFadeFar, vViewDepth);\n" +
+            (cutout ? "if (nearK < 0.5) discard;\n" : "") +
+            "gl_FragColor.a *= nearK;"
+        );
+    };
+    return material;
+  }
+
   // dark solid tube: hides the lines behind it and catches a little light
   const fill = new THREE.Mesh(
     geometry,
-    new THREE.MeshLambertMaterial({
-      color: 0x0a2025,
-      polygonOffset: true,
-      polygonOffsetFactor: 1,
-      polygonOffsetUnits: 1
+    withNearFade(
+      new THREE.MeshLambertMaterial({
+        color: 0x0a2025,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+      }),
+      true
+    )
+  );
+  const wireMat = withNearFade(
+    new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.5
     })
   );
-  const wireMat = new THREE.MeshBasicMaterial({
-    vertexColors: true,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.5
-  });
   const wire = new THREE.Mesh(geometry, wireMat);
   group.add(fill, wire);
 
@@ -194,7 +222,7 @@
   const SECTIONS = ["about", "ventures", "achievements", "now", "contact"];
   // scroll progress at which each section title is right ahead of the camera
   const SECTION_P = SECTIONS.map((_, i) => 0.2 + i * 0.15);
-  const OFF = TUBE * 3.2; // camera rides this far off the tube's centre line
+  const OFF = TUBE * 5; // camera rides this far off the tube's centre line
 
   const pathU = (p) => U0 + p;
   const wrap = (u) => ((u % 1) + 1) % 1;
@@ -214,10 +242,10 @@
   function pathCamera(p) {
     const u = pathU(p);
     const here = frameAt(u);
-    const ahead = frameAt(u + 0.04);
+    const ahead = frameAt(u + 0.06);
     return {
       pos: here.point.clone().addScaledVector(here.N, OFF),
-      look: ahead.point.clone().addScaledVector(ahead.N, OFF * 0.55),
+      look: ahead.point.clone().addScaledVector(ahead.N, OFF * 0.45),
       up: here.N.clone()
     };
   }
@@ -231,7 +259,7 @@
     const side = i % 2 ? -1 : 1;
     return f.point
       .clone()
-      .addScaledVector(f.N, OFF * 0.62)
+      .addScaledVector(f.N, OFF * 0.7)
       .addScaledVector(f.B, side * TUBE * 0.5);
   });
 
@@ -240,7 +268,7 @@
   const overview = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
   function frameOverview() {
     const z = 44;
-    const halfH = Math.tan((camera.fov * Math.PI) / 360) * z;
+    const halfH = Math.tan((45 * Math.PI) / 360) * z;
     const halfW = halfH * camera.aspect;
     const narrow = window.innerWidth < 768;
     // shift the camera so the knot sits right of the name (above it on phones)
@@ -414,6 +442,15 @@
     scene.fog.near = 30 - e * 24;
     scene.fog.far = 90 - e * 45;
     wireMat.opacity = 0.5 + e * 0.12;
+    // portrait screens get a wider lens in flight so the tube doesn't crowd them
+    const flyFov = camera.aspect < 1 ? 66 : 45;
+    const fov = 45 + (flyFov - 45) * e;
+    if (Math.abs(camera.fov - fov) > 0.01) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+    nearFade.uFadeNear.value = e * 5;
+    nearFade.uFadeFar.value = 0.001 + e * 13;
 
     updateOverlays(p, smooth(0.0, 0.1, p) * (1 - smooth(0.955, 1.0, p)), e);
     renderer.render(scene, camera);
