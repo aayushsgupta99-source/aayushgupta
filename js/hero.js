@@ -1,10 +1,9 @@
-/* Toroidal Knot Animation - wireframe with vertical gradient */
+/* Toroidal Knot Animation - hidden-line wireframe with a diagonal teal → red gradient,
+   parked on the right of the hero and bleeding off the edge */
 
 (function () {
   const canvas = document.getElementById("hero-canvas");
   if (!canvas || typeof THREE === "undefined") return;
-
-  const BG = 0x0d1419;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
@@ -25,6 +24,9 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
+  const group = new THREE.Group();
+  scene.add(group);
+
   function resize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -32,15 +34,23 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-  }
 
-  const group = new THREE.Group();
-  scene.add(group);
+    // half the visible width at the knot's depth
+    const halfH = Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
+    const halfW = halfH * camera.aspect;
+    if (w < 768) {
+      group.position.set(halfW * 0.7, halfH * 0.68, -8);
+      group.scale.setScalar(0.85);
+    } else {
+      group.position.set(halfW * 0.68, halfH * 0.04, 0);
+      group.scale.setScalar(1.15);
+    }
+  }
 
   const mobile = window.innerWidth < 768;
   const geometry = new THREE.TorusKnotGeometry(
-    9,
-    3.1,
+    10,
+    2.3,
     mobile ? 220 : 420,
     mobile ? 28 : 44,
     2,
@@ -48,13 +58,13 @@
   );
 
   const stops = [
-    { t: 0.0, c: 0x06333a },
-    { t: 0.18, c: 0x11888c },
-    { t: 0.34, c: 0x38b3a6 },
-    { t: 0.48, c: 0xd8d2b8 },
-    { t: 0.62, c: 0xe3a838 },
-    { t: 0.8, c: 0xd4611c },
-    { t: 1.0, c: 0x9e2115 }
+    { t: 0.0, c: 0x2f8f95 },
+    { t: 0.22, c: 0x7cc8c4 },
+    { t: 0.38, c: 0xc9dccb },
+    { t: 0.52, c: 0xe2b443 },
+    { t: 0.68, c: 0xe08a2c },
+    { t: 0.84, c: 0xc94a1e },
+    { t: 1.0, c: 0x9a1f18 }
   ].map((s) => ({ t: s.t, c: new THREE.Color(s.c) }));
 
   function ramp(t) {
@@ -69,18 +79,20 @@
     return stops[stops.length - 1].c.clone();
   }
 
+  // gradient runs from top-left (teal) to bottom-right (red)
   const pos = geometry.attributes.position;
-  let minY = Infinity;
-  let maxY = -Infinity;
+  const proj = (i) => pos.getX(i) * 0.55 - pos.getY(i) * 0.85;
+  let minP = Infinity;
+  let maxP = -Infinity;
   for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i);
-    if (y < minY) minY = y;
-    if (y > maxY) maxY = y;
+    const p = proj(i);
+    if (p < minP) minP = p;
+    if (p > maxP) maxP = p;
   }
 
   const colors = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
-    const c = ramp((pos.getY(i) - minY) / (maxY - minY));
+    const c = ramp((proj(i) - minP) / (maxP - minP));
     colors[i * 3] = c.r;
     colors[i * 3 + 1] = c.g;
     colors[i * 3 + 2] = c.b;
@@ -89,8 +101,9 @@
 
   const occluder = new THREE.Mesh(
     geometry,
+    // depth-only: hides the back lines but lets the page gradient show through
     new THREE.MeshBasicMaterial({
-      color: BG,
+      colorWrite: false,
       polygonOffset: true,
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1
@@ -102,31 +115,32 @@
     vertexColors: true,
     wireframe: true,
     transparent: true,
-    opacity: 0.92
+    opacity: mobile ? 0.6 : 0.85
   });
   group.add(new THREE.Mesh(geometry, wireMaterial));
 
-  group.rotation.x = 0.5;
-  group.rotation.y = 0.3;
-  group.rotation.z = 0.15;
+  group.rotation.x = 0.55;
+  group.rotation.y = -0.35;
+  group.rotation.z = 0.4;
 
   let targetRotY = group.rotation.y;
+  // the gradient is baked per vertex, so keep the knot's spin gentle
   let targetRotX = group.rotation.x;
   let spin = 0;
 
   window.addEventListener("mousemove", (e) => {
     const nx = e.clientX / window.innerWidth - 0.5;
     const ny = e.clientY / window.innerHeight - 0.5;
-    targetRotY = 0.3 + nx * 0.35;
-    targetRotX = 0.5 + ny * 0.25;
+    targetRotY = -0.35 + nx * 0.35;
+    targetRotX = 0.55 + ny * 0.25;
   });
 
   const SECTION_TINTS = {
     hero: new THREE.Color(0xffffff),
-    about: new THREE.Color(0xffd9c0),
-    ventures: new THREE.Color(0xd9fff2),
-    achievements: new THREE.Color(0xffe3b0),
-    now: new THREE.Color(0xc8fff0),
+    about: new THREE.Color(0xd6fff2),
+    ventures: new THREE.Color(0xffe6cc),
+    achievements: new THREE.Color(0xfff0c8),
+    now: new THREE.Color(0xd6fff2),
     contact: new THREE.Color(0xffffff)
   };
 
@@ -160,7 +174,7 @@
   function animate() {
     requestAnimationFrame(animate);
 
-    spin += 0.0022;
+    spin += 0.0012;
     group.rotation.y += (targetRotY + spin - group.rotation.y) * 0.02;
     group.rotation.x += (targetRotX - group.rotation.x) * 0.035;
 

@@ -14,7 +14,7 @@ contact.html          Email / phone (add LinkedIn, Instagram, resume when ready)
 404.html              Shown by GitHub Pages for any missing/mistyped URL
 .nojekyll              Tells GitHub Pages to serve files as-is (see below — keep this)
 css/style.css         All styles + design tokens (colors, fonts) at the top
-js/hero.js            The animated wireframe globe on the homepage (Three.js)
+js/hero.js            The animated wireframe torus knot behind the homepage (Three.js)
 js/main.js            Mobile nav + scroll-reveal animation
 assets/favicon.svg     The small browser-tab icon
 ```
