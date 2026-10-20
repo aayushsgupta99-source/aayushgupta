@@ -227,40 +227,97 @@
   const pathU = (p) => U0 + p;
   const wrap = (u) => ((u % 1) + 1) % 1;
 
-  function frameAt(u) {
-    const f = wrap(u) * SEGS;
-    const i = Math.floor(f);
-    const k = f - i;
-    const j = Math.min(SEGS, i + 1);
-    return {
-      point: curve.getPointAt(wrap(u)),
-      N: frames.N[i].clone().lerp(frames.N[j], k).normalize(),
-      B: frames.B[i].clone().lerp(frames.B[j], k).normalize()
-    };
+  /* The camera rides a precomputed rail beside the knot. Each sample sits on the
+     tube's upper side (so the horizon stays level), and the rail is then smoothed
+     heavily so the camera can never lurch where the tube turns steeply. */
+  const KNOT_UP = new THREE.Vector3(0, 1, 0);
+  const RAIL = 720;
+  const railT = [];
+  const railO = [];
+  const railCam = [];
+  for (let i = 0; i < RAIL; i++) {
+    const u = i / RAIL;
+    const T = curve.getTangentAt(u);
+    const k = Math.round(u * SEGS);
+    const O = KNOT_UP.clone()
+      .addScaledVector(T, -T.dot(KNOT_UP))
+      .addScaledVector(frames.N[k], 0.35)
+      .normalize();
+    railT.push(T);
+    railO.push(O);
+  }
+  // circular moving average, a few passes, for a soft rail
+  function smoothRing(arr, radius, passes, after) {
+    for (let pass = 0; pass < passes; pass++) {
+      const src = arr.map((v) => v.clone());
+      for (let i = 0; i < arr.length; i++) {
+        const acc = new THREE.Vector3();
+        for (let j = -radius; j <= radius; j++) acc.add(src[(i + j + arr.length) % arr.length]);
+        arr[i].copy(acc.multiplyScalar(1 / (radius * 2 + 1)));
+        if (after) after(arr[i], i);
+      }
+    }
+  }
+  smoothRing(railO, 36, 3, (v, i) => v.addScaledVector(railT[i], -v.dot(railT[i])).normalize());
+  for (let i = 0; i < RAIL; i++) {
+    railCam.push(curve.getPointAt(i / RAIL).addScaledVector(railO[i], OFF));
+  }
+  smoothRing(railCam, 18, 3);
+
+  // re-space the rail by distance travelled, so equal scrolling always moves the
+  // camera the same distance (no crawling through bends, no racing on straights)
+  {
+    const len = [0];
+    for (let i = 1; i <= RAIL; i++) len.push(len[i - 1] + railCam[i % RAIL].distanceTo(railCam[i - 1]));
+    const total = len[RAIL];
+    const at = (arr, i, k) => arr[i % RAIL].clone().lerp(arr[(i + 1) % RAIL], k);
+    const cam = [];
+    const O = [];
+    const T = [];
+    let j = 0;
+    for (let n = 0; n < RAIL; n++) {
+      const want = (n / RAIL) * total;
+      while (len[j + 1] < want) j++;
+      const k = (want - len[j]) / (len[j + 1] - len[j] || 1);
+      cam.push(at(railCam, j, k));
+      O.push(at(railO, j, k).normalize());
+      T.push(at(railT, j, k).normalize());
+    }
+    railCam.splice(0, RAIL, ...cam);
+    railO.splice(0, RAIL, ...O);
+    railT.splice(0, RAIL, ...T);
+  }
+
+  function railAt(arr, u, out = new THREE.Vector3()) {
+    const f = wrap(u) * RAIL;
+    const i = Math.floor(f) % RAIL;
+    return out.copy(arr[i]).lerp(arr[(i + 1) % RAIL], f - Math.floor(f));
   }
 
   function pathCamera(p) {
     const u = pathU(p);
-    const here = frameAt(u);
-    const ahead = frameAt(u + 0.06);
+    const up = railAt(railO, u).normalize();
+    const aheadUp = railAt(railO, u + 0.085).normalize();
     return {
-      pos: here.point.clone().addScaledVector(here.N, OFF),
-      look: ahead.point.clone().addScaledVector(ahead.N, OFF * 0.45),
-      up: here.N.clone()
+      pos: railAt(railCam, u),
+      // aim a little below the rail ahead, toward the tube
+      look: railAt(railCam, u + 0.085).addScaledVector(aheadUp, -OFF * 0.55),
+      up
     };
   }
 
-  // each title hangs on the flight path itself, so it grows dead ahead as you
-  // approach and slips past just before the camera flies through it
+  // each title hangs on the camera's rail, so it grows dead ahead as you
+  // approach and sweeps past just before the camera reaches it
   const labelEls = Array.from(document.querySelectorAll(".fly-label"));
   const labelIdx = labelEls.map((el) => SECTIONS.indexOf(el.dataset.section));
   const labelAnchors = labelIdx.map((i) => {
-    const f = frameAt(pathU(SECTION_P[i]));
-    const side = i % 2 ? -1 : 1;
-    return f.point
-      .clone()
-      .addScaledVector(f.N, OFF * 0.7)
-      .addScaledVector(f.B, side * TUBE * 0.5);
+    const u = pathU(SECTION_P[i]);
+    const O = railAt(railO, u).normalize();
+    const side = new THREE.Vector3().crossVectors(railAt(railT, u).normalize(), O);
+    // just below the rail and off to alternating sides, so it sweeps past
+    return railAt(railCam, u)
+      .addScaledVector(O, -OFF * 0.28)
+      .addScaledVector(side, (i % 2 ? -1 : 1) * TUBE * 0.9);
   });
 
   /* ---------- overview (hero) framing ---------- */
@@ -360,18 +417,21 @@
       v.project(camera);
       // only the title you're approaching shows, and only while flying
       const d = SECTION_P[labelIdx[i]] - p;
-      const fade = smooth(0.075, 0.045, d) * smooth(0.0, 0.012, d) * e;
+      const fade = smooth(0.105, 0.07, d) * smooth(0.0, 0.014, d) * e;
       if (v.z > 1 || fade <= 0.01) {
         el.style.opacity = "0";
         el.style.pointerEvents = "none";
         return;
       }
-      const s = clamp(9 / dist, 0.2, 1.4);
+      const s = clamp(5.5 / dist, 0.18, 2.2);
+      el.classList.toggle("is-near", s > 0.9);
       // keep the whole title on screen (matters on narrow phones)
       const half = (el.offsetWidth * s) / 2 + 16;
       const W = window.innerWidth;
       const x = clamp((v.x * 0.5 + 0.5) * W, Math.min(half, W / 2), Math.max(W - half, W / 2));
-      const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      const halfH = (el.offsetHeight * s) / 2 + 24;
+      const H = window.innerHeight;
+      const y = clamp((-v.y * 0.5 + 0.5) * H, Math.min(halfH + 56, H / 2), Math.max(H - halfH, H / 2));
       el.style.opacity = String(fade);
       el.style.pointerEvents = fade > 0.5 ? "auto" : "none";
       el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${s})`;
@@ -388,13 +448,24 @@
     return true;
   }
   // snap skips the easing (handy for screenshots and tests)
-  window.fly = { goTo, snap: () => (current = target) };
+  let snapNext = false;
+  window.fly = {
+    goTo,
+    snap: () => {
+      current = target;
+      snapNext = true;
+    }
+  };
 
   /* ---------- loop ---------- */
 
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const camUp = new THREE.Vector3();
+  const lookSm = new THREE.Vector3();
+  const viewDir = new THREE.Vector3();
+  const upSm = new THREE.Vector3(0, 1, 0);
+  let last = 0;
   const worldUp = new THREE.Vector3(0, 1, 0);
   const clock = new THREE.Clock();
   let spin = 0;
@@ -408,9 +479,12 @@
     requestAnimationFrame(animate);
     if (!is3D()) return;
     const time = clock.getElapsedTime();
+    const dt = Math.min(0.05, time - last);
+    last = time;
     if (!introDone) updateIntro(time);
 
-    current += (target - current) * 0.075;
+    // frame-rate independent glide: the camera keeps coasting after you stop
+    current += (target - current) * (1 - Math.exp(-dt * 2.4));
     const p = ((current % 1) + 1) % 1;
     // 0 on the overview, 1 while flying; it returns to 0 at the end of the lap
     const e = smooth(0.0, 0.12, p) * (1 - smooth(0.88, 1.0, p));
@@ -430,18 +504,34 @@
     path.up.transformDirection(group.matrixWorld);
 
     camPos.copy(overview.pos).lerp(path.pos, e);
-    camPos.x += mouse.sx * 2.5 * (1 - e);
-    camPos.y -= mouse.sy * 1.8 * (1 - e);
+    camPos.x += mouse.sx * (2.5 - e * 1.7);
+    camPos.y -= mouse.sy * (1.8 - e * 1.2);
+    // a slow breathing drift so the scene never sits dead still
+    camPos.x += Math.sin(time * 0.45) * 0.35 * e;
+    camPos.y += Math.cos(time * 0.37) * 0.28 * e;
     camLook.copy(overview.look).lerp(path.look, e);
-    camUp.copy(worldUp).lerp(path.up, e * 0.85).normalize();
+    // mostly level horizon with a gentle bank through the turns
+    camUp.copy(worldUp).lerp(path.up, e * 0.3).normalize();
+    // where the path climbs or dives steeply, lean on the ride direction so the
+    // view can't flip over
+    viewDir.copy(camLook).sub(camPos).normalize();
+    const steep = smooth(0.7, 0.95, Math.abs(viewDir.dot(camUp)));
+    if (steep > 0) camUp.lerp(path.up, steep).normalize();
+
+    // aim and roll ease separately, so turns are rounded off instead of snapped
+    const ease = snapNext ? 1 : 1 - Math.exp(-dt * 3.2);
+    snapNext = false;
+    if (lookSm.lengthSq() === 0) lookSm.copy(camLook);
+    lookSm.lerp(camLook, ease);
+    upSm.lerp(camUp, ease).normalize();
     camera.position.copy(camPos);
-    camera.up.copy(camUp);
-    camera.lookAt(camLook);
+    camera.up.copy(upSm);
+    camera.lookAt(lookSm);
 
     // fog tightens up close so far strands sink into the dark
-    scene.fog.near = 30 - e * 24;
-    scene.fog.far = 90 - e * 45;
-    wireMat.opacity = 0.5 + e * 0.12;
+    scene.fog.near = 30 - e * 26;
+    scene.fog.far = 90 - e * 52;
+    wireMat.opacity = 0.5 - e * 0.1;
     // portrait screens get a wider lens in flight so the tube doesn't crowd them
     const flyFov = camera.aspect < 1 ? 66 : 45;
     const fov = 45 + (flyFov - 45) * e;
