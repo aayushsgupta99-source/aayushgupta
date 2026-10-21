@@ -79,8 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  document.querySelectorAll(".fly-label").forEach((btn) =>
-    btn.addEventListener("click", () => openDrawer(btn.dataset.section))
+  document.querySelectorAll("[data-open]").forEach((btn) =>
+    btn.addEventListener("click", () => openDrawer(btn.dataset.open))
   );
 
   // in the 3D view, section links fly to that title instead of jumping
