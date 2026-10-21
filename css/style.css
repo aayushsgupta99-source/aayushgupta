@@ -229,7 +229,7 @@ section:last-of-type { border-bottom: none; }
 }
 
 /* scroll distance for one lap of the flight */
-.fly-track { height: 1000vh; }
+.fly-track { height: 760vh; }
 
 .fly__hero {
   position: absolute;
@@ -309,56 +309,117 @@ section:last-of-type { border-bottom: none; }
   50% { transform: translateY(6px); }
 }
 
-/* section titles floating along the knot */
-.fly-label {
+/* tour cards: one per section, on the side of the screen the knot leaves open */
+.station {
   position: absolute;
-  left: 0;
-  top: 0;
+  top: 50%;
+  width: min(460px, 36vw);
+  margin-top: -110px;
   opacity: 0;
-  padding: 0 0 10px;
-  background: none;
-  border: none;
-  border-bottom: 3px solid #c8962a;
+  visibility: hidden;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+.station--left { left: clamp(24px, 7vw, 140px); }
+.station--right { right: clamp(24px, 7vw, 140px); }
+
+.station__num {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #c8962a;
+}
+.station__num::after {
+  content: "";
+  width: 48px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+}
+.station__num span { color: var(--parchment-dim); }
+
+.station__title {
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 52px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #d9cdaa;
-  white-space: nowrap;
-  cursor: pointer;
-  pointer-events: none;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
-  transition: color 0.2s ease;
-  will-change: transform, opacity;
+  font-size: clamp(34px, 4vw, 60px);
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  color: #e9e1c8;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
 }
-.fly-label:hover { color: #f3e3b6; }
-/* far off the title is underlined with dashes; it firms up as you arrive */
-.fly-label:not(.is-near) { border-bottom: 2px dashed rgba(200, 150, 42, 0.55); }
-.fly-label:focus-visible { outline: 2px solid var(--brass); outline-offset: 8px; }
+.station__text {
+  margin: 18px 0 0;
+  font-size: clamp(15px, 1.15vw, 18px);
+  line-height: 1.6;
+  color: var(--parchment-dim);
+  max-width: 400px;
+}
+.station__text a { color: var(--parchment); }
 
-/* thin scroll position marker on the right edge */
-.fly__progress {
-  position: absolute;
-  top: 0;
-  right: 6px;
-  bottom: 0;
-  width: 3px;
+.station__open {
+  margin-top: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e9c46a;
+  background: rgba(200, 150, 42, 0.06);
+  border: 1px solid rgba(200, 150, 42, 0.55);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease, gap 0.25s ease;
 }
-.fly__progress span {
+.station__open:hover { background: #c8962a; color: #0a1d22; gap: 16px; }
+.station__open:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
+
+/* stop dots on the right edge */
+.fly__dots {
   position: absolute;
-  top: 10px;
-  left: 0;
-  width: 3px;
-  height: 70px;
-  border-radius: 2px;
-  background: rgba(228, 243, 236, 0.55);
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  pointer-events: auto;
 }
+.fly__dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(228, 243, 236, 0.45);
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+.fly__dots button:hover { border-color: #c8962a; }
+.fly__dots button.is-active { background: #c8962a; border-color: #c8962a; transform: scale(1.35); }
 
 @media (max-width: 768px) {
   .hero__name { font-size: clamp(56px, 19vw, 140px); }
   .hero__tagline { letter-spacing: 0.16em; line-height: 1.8; }
-  .fly-label { font-size: 44px; }
+  .station,
+  .station--left,
+  .station--right {
+    left: 24px;
+    right: 24px;
+    top: auto;
+    bottom: 13vh;
+    width: auto;
+    margin: 0;
+  }
+  .station__title { font-size: clamp(30px, 9vw, 42px); }
+  .fly__dots { right: 12px; gap: 12px; }
 }
 
 /* ---------- section reader (3D view) ---------- */

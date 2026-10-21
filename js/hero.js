@@ -1,12 +1,11 @@
-/* The 3D view: a dim wireframe knot that gold particles draw on load, and a camera
-   that flies along it as you scroll. Section titles float beside the path, and the
-   flight ends where it began, so scrolling past the end loops back to the start. */
+/* The 3D view: a dim wireframe knot that gold particles draw on load, and a calm
+   camera tour around it as you scroll, pausing at one stop per section. The tour
+   ends where it began, so scrolling past the end loops back to the start. */
 
 (function () {
   const root = document.documentElement;
   const canvas = document.getElementById("hero-canvas");
   const fly = document.querySelector(".fly");
-  const track = document.querySelector(".fly-track");
 
   let webgl = false;
   try {
@@ -30,7 +29,7 @@
 
   const BG = new THREE.Color(0x0a1d22);
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(BG, 30, 90);
+  scene.fog = new THREE.Fog(BG, 34, 76);
 
   const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 400);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -135,7 +134,7 @@
       vertexColors: true,
       wireframe: true,
       transparent: true,
-      opacity: 0.5
+      opacity: 0.46
     })
   );
   const wire = new THREE.Mesh(geometry, wireMat);
@@ -216,133 +215,62 @@
     }
   }
 
-  /* ---------- flight path ---------- */
 
-  const U0 = 0.62; // where along the knot the flight starts
-  const SECTIONS = ["about", "ventures", "achievements", "now", "contact"];
-  // scroll progress at which each section title is right ahead of the camera
-  const SECTION_P = SECTIONS.map((_, i) => 0.2 + i * 0.15);
-  const OFF = TUBE * 5; // camera rides this far off the tube's centre line
+  /* ---------- the tour: a calm camera route with one stop per section ----------
 
-  const pathU = (p) => U0 + p;
-  const wrap = (u) => ((u % 1) + 1) % 1;
+     The knot stays put as the centrepiece. The camera glides around it on a smooth
+     closed route through six stops (the opening view plus one per section), easing
+     into each stop and holding there while that section's card is on screen. The
+     horizon is always level, and the route ends where it began, so the tour loops. */
 
-  /* The camera rides a precomputed rail beside the knot. Each sample sits on the
-     tube's upper side (so the horizon stays level), and the rail is then smoothed
-     heavily so the camera can never lurch where the tube turns steeply. */
-  const KNOT_UP = new THREE.Vector3(0, 1, 0);
-  const RAIL = 720;
-  const railT = [];
-  const railO = [];
-  const railCam = [];
-  for (let i = 0; i < RAIL; i++) {
-    const u = i / RAIL;
-    const T = curve.getTangentAt(u);
-    const k = Math.round(u * SEGS);
-    const O = KNOT_UP.clone()
-      .addScaledVector(T, -T.dot(KNOT_UP))
-      .addScaledVector(frames.N[k], 0.35)
-      .normalize();
-    railT.push(T);
-    railO.push(O);
-  }
-  // circular moving average, a few passes, for a soft rail
-  function smoothRing(arr, radius, passes, after) {
-    for (let pass = 0; pass < passes; pass++) {
-      const src = arr.map((v) => v.clone());
-      for (let i = 0; i < arr.length; i++) {
-        const acc = new THREE.Vector3();
-        for (let j = -radius; j <= radius; j++) acc.add(src[(i + j + arr.length) % arr.length]);
-        arr[i].copy(acc.multiplyScalar(1 / (radius * 2 + 1)));
-        if (after) after(arr[i], i);
-      }
-    }
-  }
-  smoothRing(railO, 36, 3, (v, i) => v.addScaledVector(railT[i], -v.dot(railT[i])).normalize());
-  for (let i = 0; i < RAIL; i++) {
-    railCam.push(curve.getPointAt(i / RAIL).addScaledVector(railO[i], OFF));
-  }
-  smoothRing(railCam, 18, 3);
+  // az: degrees around the knot, el: degrees above it, r: distance from it,
+  // side: which side of the screen the card takes (the knot takes the other)
+  const STOPS = [
+    { key: "hero", az: 0, el: 2, r: 46, side: -1 },
+    { key: "about", az: 48, el: 16, r: 41, side: -1 },
+    { key: "ventures", az: 118, el: -9, r: 40, side: 1 },
+    { key: "achievements", az: 184, el: 30, r: 42, side: -1 },
+    { key: "now", az: 252, el: -12, r: 40, side: 1 },
+    { key: "contact", az: 312, el: 10, r: 41, side: -1 }
+  ];
+  const N_STOPS = STOPS.length;
+  const DEG = Math.PI / 180;
+  const SWOOP = 7; // how much closer the camera dips in the middle of each leg
 
-  // re-space the rail by distance travelled, so equal scrolling always moves the
-  // camera the same distance (no crawling through bends, no racing on straights)
-  {
-    const len = [0];
-    for (let i = 1; i <= RAIL; i++) len.push(len[i - 1] + railCam[i % RAIL].distanceTo(railCam[i - 1]));
-    const total = len[RAIL];
-    const at = (arr, i, k) => arr[i % RAIL].clone().lerp(arr[(i + 1) % RAIL], k);
-    const cam = [];
-    const O = [];
-    const T = [];
-    let j = 0;
-    for (let n = 0; n < RAIL; n++) {
-      const want = (n / RAIL) * total;
-      while (len[j + 1] < want) j++;
-      const k = (want - len[j]) / (len[j + 1] - len[j] || 1);
-      cam.push(at(railCam, j, k));
-      O.push(at(railO, j, k).normalize());
-      T.push(at(railT, j, k).normalize());
-    }
-    railCam.splice(0, RAIL, ...cam);
-    railO.splice(0, RAIL, ...O);
-    railT.splice(0, RAIL, ...T);
+  // uniform Catmull-Rom through the stops; azimuth keeps climbing a full turn so
+  // the orbit always goes forward and closes back on the opening view
+  const stopVal = (i, field) => {
+    const n = ((i % N_STOPS) + N_STOPS) % N_STOPS;
+    const lap = Math.floor(i / N_STOPS);
+    return STOPS[n][field] + (field === "az" ? lap * 360 : 0);
+  };
+  const cr = (a, b, c, d, t) =>
+    0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
+  function orbit(leg, k, out) {
+    const v = (f) => cr(stopVal(leg - 1, f), stopVal(leg, f), stopVal(leg + 1, f), stopVal(leg + 2, f), k);
+    const az = v("az") * DEG;
+    const el = v("el") * DEG;
+    // portrait screens are narrow, so the camera stands further back there
+    const reach = camera.aspect < 1 ? 1.45 : 1;
+    const r = (v("r") - SWOOP * Math.sin(Math.PI * k)) * reach;
+    return out.set(r * Math.cos(el) * Math.sin(az), r * Math.sin(el), r * Math.cos(el) * Math.cos(az));
   }
 
-  function railAt(arr, u, out = new THREE.Vector3()) {
-    const f = wrap(u) * RAIL;
-    const i = Math.floor(f) % RAIL;
-    return out.copy(arr[i]).lerp(arr[(i + 1) % RAIL], f - Math.floor(f));
+  // scroll progress -> route position: glide between stops, settle at each one
+  const HOLD = 0.2; // share of each leg spent resting at its two ends
+  const smoother = (x) => x * x * x * (x * (x * 6 - 15) + 10);
+  function routeT(p) {
+    const f = p * N_STOPS;
+    const leg = Math.floor(f);
+    const k = smoother(clamp((f - leg - HOLD) / (1 - 2 * HOLD), 0, 1));
+    return { t: (leg + k) / N_STOPS, leg, k };
   }
 
-  function pathCamera(p) {
-    const u = pathU(p);
-    const up = railAt(railO, u).normalize();
-    const aheadUp = railAt(railO, u + 0.085).normalize();
-    return {
-      pos: railAt(railCam, u),
-      // aim a little below the rail ahead, toward the tube
-      look: railAt(railCam, u + 0.085).addScaledVector(aheadUp, -OFF * 0.55),
-      up
-    };
-  }
-
-  // each title hangs on the camera's rail, so it grows dead ahead as you
-  // approach and sweeps past just before the camera reaches it
-  const labelEls = Array.from(document.querySelectorAll(".fly-label"));
-  const labelIdx = labelEls.map((el) => SECTIONS.indexOf(el.dataset.section));
-  const labelAnchors = labelIdx.map((i) => {
-    const u = pathU(SECTION_P[i]);
-    const O = railAt(railO, u).normalize();
-    const side = new THREE.Vector3().crossVectors(railAt(railT, u).normalize(), O);
-    // just below the rail and off to alternating sides, so it sweeps past
-    return railAt(railCam, u)
-      .addScaledVector(O, -OFF * 0.28)
-      .addScaledVector(side, (i % 2 ? -1 : 1) * TUBE * 0.9);
-  });
-
-  /* ---------- overview (hero) framing ---------- */
-
-  const overview = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
-  function frameOverview() {
-    const z = 44;
-    const halfH = Math.tan((45 * Math.PI) / 360) * z;
-    const halfW = halfH * camera.aspect;
-    const narrow = window.innerWidth < 768;
-    // shift the camera so the knot sits right of the name (above it on phones)
-    const ox = narrow ? halfW * 0.25 : halfW * 0.42;
-    const oy = narrow ? halfH * 0.55 : 0;
-    overview.pos.set(-ox, -oy, z);
-    overview.look.set(-ox, -oy, 0);
-  }
-
-  function resize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    frameOverview();
+  // how present stop i is at progress p (1 while resting there, 0 once you've left)
+  function presence(i, p) {
+    let d = Math.abs(p - i / N_STOPS);
+    d = Math.min(d, 1 - d);
+    return 1 - smooth(0.035, 0.085, d);
   }
 
   /* ---------- scroll: progress, looping ---------- */
@@ -351,12 +279,16 @@
   let target = 0;
   let current = 0;
   const maxScroll = () => Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  const drawerOpen = () => {
+    const d = document.querySelector(".drawer");
+    return d && !d.hidden;
+  };
 
   function onScroll() {
     if (!is3D()) return;
     const max = maxScroll();
     const y = window.scrollY;
-    // the last frame matches the first, so jumping to the top is seamless
+    // the route ends where it starts, so jumping back to the top is seamless
     if (y >= max - 1) {
       laps += 1;
       window.scrollTo({ top: 1, behavior: "instant" });
@@ -378,11 +310,6 @@
     { passive: true }
   );
 
-  const drawerOpen = () => {
-    const d = document.querySelector(".drawer");
-    return d && !d.hidden;
-  };
-
   /* ---------- pointer parallax ---------- */
 
   const mouse = { x: 0, y: 0, sx: 0, sy: 0 };
@@ -395,83 +322,99 @@
 
   const heroEl = document.querySelector(".fly__hero");
   const scrollCue = document.querySelector(".hero__scroll");
-  const bar = document.querySelector(".fly__progress span");
   const nav = document.querySelector(".nav--overlay");
-  const v = new THREE.Vector3();
+  const cards = STOPS.map((s) => document.querySelector(`.station[data-section="${s.key}"]`));
+  const dots = Array.from(document.querySelectorAll(".fly__dots button"));
 
-  function updateOverlays(p, entering, e) {
-    // the name drifts off to the left and grows as the camera dives in
-    const q = entering;
-    heroEl.style.transform = `translate3d(${-q * 38}vw, 0, 0) scale(${1 + q * 0.9})`;
-    heroEl.style.opacity = String(clamp(1 - q * 1.6, 0, 1));
-    heroEl.style.filter = q > 0.01 ? `blur(${q * 8}px)` : "none";
-    heroEl.style.visibility = q > 0.66 ? "hidden" : "visible";
-    scrollCue.style.opacity = String(clamp(1 - q * 5, 0, 1));
-    bar.style.transform = `translateY(${p * (window.innerHeight - 90)}px)`;
-    if (nav) nav.classList.toggle("is-shown", q > 0.5);
-
-    labelEls.forEach((el, i) => {
-      v.copy(labelAnchors[i]);
-      group.localToWorld(v);
-      const dist = v.distanceTo(camera.position);
-      v.project(camera);
-      // only the title you're approaching shows, and only while flying
-      const d = SECTION_P[labelIdx[i]] - p;
-      const fade = smooth(0.105, 0.07, d) * smooth(0.0, 0.014, d) * e;
-      if (v.z > 1 || fade <= 0.01) {
-        el.style.opacity = "0";
-        el.style.pointerEvents = "none";
-        return;
+  function updateOverlays(p) {
+    const narrow = window.innerWidth < 768;
+    let active = 0;
+    let best = 0;
+    STOPS.forEach((s, i) => {
+      const v = presence(i, p);
+      if (v > best) {
+        best = v;
+        active = i;
       }
-      const s = clamp(5.5 / dist, 0.18, 2.2);
-      el.classList.toggle("is-near", s > 0.9);
-      // keep the whole title on screen (matters on narrow phones)
-      const half = (el.offsetWidth * s) / 2 + 16;
-      const W = window.innerWidth;
-      const x = clamp((v.x * 0.5 + 0.5) * W, Math.min(half, W / 2), Math.max(W - half, W / 2));
-      const halfH = (el.offsetHeight * s) / 2 + 24;
-      const H = window.innerHeight;
-      const y = clamp((-v.y * 0.5 + 0.5) * H, Math.min(halfH + 56, H / 2), Math.max(H - halfH, H / 2));
-      el.style.opacity = String(fade);
-      el.style.pointerEvents = fade > 0.5 ? "auto" : "none";
-      el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${s})`;
+      const el = i === 0 ? heroEl : cards[i];
+      if (!el) return;
+      // cards drift in from their own side and blur as they leave
+      const shift = (1 - v) * (narrow ? 0 : s.side * -4);
+      const rise = (1 - v) * (narrow ? 3 : 1.5);
+      el.style.opacity = String(v);
+      el.style.transform = `translate3d(${shift}vw, ${rise}vh, 0)`;
+      el.style.filter = v < 0.99 ? `blur(${(1 - v) * 10}px)` : "none";
+      el.style.visibility = v < 0.01 ? "hidden" : "visible";
+      el.style.pointerEvents = v > 0.6 ? "auto" : "none";
     });
+    scrollCue.style.opacity = String(clamp(presence(0, p) * 1.4 - 0.4, 0, 1));
+    if (nav) nav.classList.toggle("is-shown", presence(0, p) < 0.5);
+    dots.forEach((d, i) => d.classList.toggle("is-active", i === active));
   }
 
-  /* ---------- go to a section (nav links, title clicks) ---------- */
+  /* ---------- go to a stop (nav links, dots) ---------- */
 
   function goTo(key) {
-    const i = SECTIONS.indexOf(key);
+    const i = STOPS.findIndex((s) => s.key === key);
     if (i < 0) return false;
-    const p = SECTION_P[i] - 0.025;
-    window.scrollTo({ top: p * maxScroll(), behavior: "smooth" });
+    window.scrollTo({ top: (i / N_STOPS) * maxScroll(), behavior: "smooth" });
     return true;
   }
-  // snap skips the easing (handy for screenshots and tests)
+  dots.forEach((d) => d.addEventListener("click", () => goTo(d.dataset.goto)));
+
   let snapNext = false;
   window.fly = {
     goTo,
+    // skip the easing (handy for screenshots and tests)
     snap: () => {
       current = target;
       snapNext = true;
     }
   };
 
+  /* ---------- framing ---------- */
+
+  function resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    // portrait screens need a wider lens to fit the knot
+    camera.fov = camera.aspect < 1 ? 62 : 45;
+    camera.updateProjectionMatrix();
+  }
+
+  // slide the picture sideways (or up on phones) so the knot sits opposite the card
+  let frameX = 0;
+  let frameY = 0;
+  function applyFraming(side) {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const narrow = w < 768;
+    const x = narrow ? 0 : side * 0.21 * w;
+    const y = narrow ? 0.2 * h : 0;
+    if (Math.abs(x - frameX) < 0.5 && Math.abs(y - frameY) < 0.5 && camera.view) return;
+    frameX = x;
+    frameY = y;
+    camera.setViewOffset(w, h, x, y, w, h);
+  }
+
   /* ---------- loop ---------- */
 
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
-  const camUp = new THREE.Vector3();
   const lookSm = new THREE.Vector3();
-  const viewDir = new THREE.Vector3();
-  const upSm = new THREE.Vector3(0, 1, 0);
-  let last = 0;
-  const worldUp = new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3();
   const clock = new THREE.Clock();
-  let spin = 0;
+  let last = 0;
+  let sideSm = STOPS[0].side;
 
   resize();
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", () => {
+    resize();
+    frameX = Infinity;
+  });
   onScroll();
   current = target;
 
@@ -483,66 +426,48 @@
     last = time;
     if (!introDone) updateIntro(time);
 
-    // frame-rate independent glide: the camera keeps coasting after you stop
-    current += (target - current) * (1 - Math.exp(-dt * 2.4));
+    // the camera glides toward the scroll position and keeps coasting briefly
+    current += (target - current) * (1 - Math.exp(-dt * 3));
+    if (snapNext) current = target;
     const p = ((current % 1) + 1) % 1;
-    // 0 on the overview, 1 while flying; it returns to 0 at the end of the lap
-    const e = smooth(0.0, 0.12, p) * (1 - smooth(0.88, 1.0, p));
+    const { leg, k } = routeT(p);
 
-    // a slow idle spin on the overview that stops while flying
-    spin += 0.0009 * (1 - e);
-    group.rotation.y = 0.25 + Math.sin(spin) * 0.35;
-    group.rotation.x = -0.35 + Math.sin(spin * 0.7) * 0.12;
-    group.updateMatrixWorld();
+    // the knot breathes on its own, so the scene is never frozen
+    group.rotation.y = 0.25 + Math.sin(time * 0.09) * 0.22;
+    group.rotation.x = -0.35 + Math.sin(time * 0.07) * 0.08;
+    group.rotation.z = 0.2 + Math.sin(time * 0.05) * 0.05;
 
-    mouse.sx += (mouse.x - mouse.sx) * 0.04;
-    mouse.sy += (mouse.y - mouse.sy) * 0.04;
+    orbit(leg, k, camPos);
+    camLook.set(0, 0, 0);
 
-    const path = pathCamera(p);
-    group.localToWorld(path.pos);
-    group.localToWorld(path.look);
-    path.up.transformDirection(group.matrixWorld);
+    // gentle pointer parallax, sideways and up/down relative to the view
+    mouse.sx += (mouse.x - mouse.sx) * (1 - Math.exp(-dt * 2.5));
+    mouse.sy += (mouse.y - mouse.sy) * (1 - Math.exp(-dt * 2.5));
+    right.copy(camLook).sub(camPos).cross(camera.up).normalize();
+    camPos.addScaledVector(right, mouse.sx * 2.2);
+    camPos.y -= mouse.sy * 1.6;
 
-    camPos.copy(overview.pos).lerp(path.pos, e);
-    camPos.x += mouse.sx * (2.5 - e * 1.7);
-    camPos.y -= mouse.sy * (1.8 - e * 1.2);
-    // a slow breathing drift so the scene never sits dead still
-    camPos.x += Math.sin(time * 0.45) * 0.35 * e;
-    camPos.y += Math.cos(time * 0.37) * 0.28 * e;
-    camLook.copy(overview.look).lerp(path.look, e);
-    // mostly level horizon with a gentle bank through the turns
-    camUp.copy(worldUp).lerp(path.up, e * 0.3).normalize();
-    // where the path climbs or dives steeply, lean on the ride direction so the
-    // view can't flip over
-    viewDir.copy(camLook).sub(camPos).normalize();
-    const steep = smooth(0.7, 0.95, Math.abs(viewDir.dot(camUp)));
-    if (steep > 0) camUp.lerp(path.up, steep).normalize();
-
-    // aim and roll ease separately, so turns are rounded off instead of snapped
-    const ease = snapNext ? 1 : 1 - Math.exp(-dt * 3.2);
-    snapNext = false;
-    if (lookSm.lengthSq() === 0) lookSm.copy(camLook);
-    lookSm.lerp(camLook, ease);
-    upSm.lerp(camUp, ease).normalize();
+    lookSm.copy(camLook);
     camera.position.copy(camPos);
-    camera.up.copy(upSm);
+    camera.up.set(0, 1, 0);
     camera.lookAt(lookSm);
 
-    // fog tightens up close so far strands sink into the dark
-    scene.fog.near = 30 - e * 26;
-    scene.fog.far = 90 - e * 52;
-    wireMat.opacity = 0.5 - e * 0.1;
-    // portrait screens get a wider lens in flight so the tube doesn't crowd them
-    const flyFov = camera.aspect < 1 ? 66 : 45;
-    const fov = 45 + (flyFov - 45) * e;
-    if (Math.abs(camera.fov - fov) > 0.01) {
-      camera.fov = fov;
-      camera.updateProjectionMatrix();
-    }
-    nearFade.uFadeNear.value = e * 5;
-    nearFade.uFadeFar.value = 0.001 + e * 13;
+    // the card's side follows the route too, so the knot slides across smoothly
+    const a = STOPS[leg % N_STOPS].side;
+    const b = STOPS[(leg + 1) % N_STOPS].side;
+    const side = a + (b - a) * k;
+    sideSm += (side - sideSm) * (snapNext ? 1 : 1 - Math.exp(-dt * 4));
+    applyFraming(sideSm);
+    snapNext = false;
 
-    updateOverlays(p, smooth(0.0, 0.1, p) * (1 - smooth(0.955, 1.0, p)), e);
+    // fog tracks the distance to the knot: near strands crisp, far strands sink away
+    const dist = camPos.length();
+    scene.fog.near = Math.max(4, dist - 12);
+    scene.fog.far = dist + 30;
+    nearFade.uFadeNear.value = 3;
+    nearFade.uFadeFar.value = 9;
+
+    updateOverlays(p);
     renderer.render(scene, camera);
   }
 

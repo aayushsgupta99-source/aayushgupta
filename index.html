@@ -60,16 +60,50 @@
     </svg>
   </div>
 
-  <!-- section titles that float along the knot; positioned by js/hero.js -->
-  <div class="fly__labels">
-    <button class="fly-label" data-section="about">About</button>
-    <button class="fly-label" data-section="ventures">Ventures</button>
-    <button class="fly-label" data-section="achievements">Achievements</button>
-    <button class="fly-label" data-section="now">Now</button>
-    <button class="fly-label" data-section="contact">Contact</button>
-  </div>
+  <!-- one card per stop on the tour; js/hero.js fades them in and out -->
+  <article class="station station--left" data-section="about">
+    <p class="station__num">01 <span>About</span></p>
+    <h2 class="station__title">The strategist's brief</h2>
+    <p class="station__text">Commerce, economics and applied mathematics, pointed at real-world problems.</p>
+    <button class="station__open" type="button" data-open="about">Read more <span aria-hidden="true">→</span></button>
+  </article>
+  <article class="station station--right" data-section="ventures">
+    <p class="station__num">02 <span>Ventures</span></p>
+    <h2 class="station__title">life2see</h2>
+    <p class="station__text">The social initiative I co-founded to drive community impact.</p>
+    <button class="station__open" type="button" data-open="ventures">Read more <span aria-hidden="true">→</span></button>
+  </article>
+  <article class="station station--left" data-section="achievements">
+    <p class="station__num">03 <span>Achievements</span></p>
+    <h2 class="station__title">Promising Delegate</h2>
+    <p class="station__text">Oxford Model United Nations, 2025.</p>
+    <button class="station__open" type="button" data-open="achievements">Read more <span aria-hidden="true">→</span></button>
+  </article>
+  <article class="station station--right" data-section="now">
+    <p class="station__num">04 <span>Now</span></p>
+    <h2 class="station__title">What I'm focused on</h2>
+    <p class="station__text">College applications, growing life2see, and building this site from scratch.</p>
+    <button class="station__open" type="button" data-open="now">Read more <span aria-hidden="true">→</span></button>
+  </article>
+  <article class="station station--left" data-section="contact">
+    <p class="station__num">05 <span>Contact</span></p>
+    <h2 class="station__title">Get in touch</h2>
+    <p class="station__text">
+      <a href="mailto:aayushsgupta99@gmail.com">aayushsgupta99@gmail.com</a><br />
+      <a href="tel:+919925043649">+91 99250 43649</a>
+    </p>
+    <button class="station__open" type="button" data-open="contact">Read more <span aria-hidden="true">→</span></button>
+  </article>
 
-  <div class="fly__progress" aria-hidden="true"><span></span></div>
+  <!-- where you are on the tour; each dot jumps to its stop -->
+  <nav class="fly__dots" aria-label="Tour stops">
+    <button type="button" data-goto="hero" aria-label="Start"></button>
+    <button type="button" data-goto="about" aria-label="About"></button>
+    <button type="button" data-goto="ventures" aria-label="Ventures"></button>
+    <button type="button" data-goto="achievements" aria-label="Achievements"></button>
+    <button type="button" data-goto="now" aria-label="Now"></button>
+    <button type="button" data-goto="contact" aria-label="Contact"></button>
+  </nav>
 </div>
 <!-- tall spacer that gives the flight its scroll distance -->
 <div class="fly-track only-3d" aria-hidden="true"></div>
